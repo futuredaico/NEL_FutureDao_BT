@@ -133,17 +133,17 @@ namespace NEL_FutureDao_BT.task
                 body = emailRegisterBody;
                 hasSendState = EmailState.sendAfterState;
             }
-            else if (type == EmailState.sendBeforeStateAtChangeEmail)
+            else if (type == EmailState.sendBeforeStateAtResetPassword)
             {
                 prefix = emailResetPswdUrl;
                 body = emailResetPswdBody;
-                hasSendState = EmailState.sendAfterStateAtChangeEmail;
+                hasSendState = EmailState.sendAfterStateAtResetPassword;
             }
-            else if (type == EmailState.sendBeforeStateAtResetPassword)
+            else if (type == EmailState.sendBeforeStateAtChangeEmail)
             {
                 prefix = emailChangeMailUrl;
                 body = emailChangeMailBody;
-                hasSendState = EmailState.sendAfterStateAtResetPassword;
+                hasSendState = EmailState.sendAfterStateAtChangeEmail;
             }
             else if(type == EmailState.sendBeforeStateAtInvited)
             {
