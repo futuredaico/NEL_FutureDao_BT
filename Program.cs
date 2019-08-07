@@ -12,6 +12,7 @@ namespace NEL_FutureDao_BT
         private static void InitTask()
         {
             AddTask(new EmailVerifyTask("EmailVerifyTask"));
+            AddTask(new ProjCountTask("ProjCountTask"));
         }
         private static void StartTask()
         {

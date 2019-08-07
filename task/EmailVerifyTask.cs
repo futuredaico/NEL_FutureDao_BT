@@ -46,7 +46,6 @@ namespace NEL_FutureDao_BT.task
 
             eh = new EmailHelper { config = Config.emailInfo };
             daoConn = Config.daoDbConnInfo;
-            hasInitSuccess = true;
         }
 
         public override void process()

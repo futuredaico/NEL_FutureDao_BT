@@ -29,6 +29,7 @@ namespace NEL_FutureDao_BT.core
             try
             {
                 initConfig(config);
+                hasInitSuccess = true;
                 LogHelper.debug("InitTask success:" + name() + "_" + networkType());
             }
             catch (Exception ex)
@@ -51,7 +52,7 @@ namespace NEL_FutureDao_BT.core
             }
         }
         public void startTask() {
-            if (!hasInitSuccess) return;
+            if (!isRuning()) return;
             while(true)
             {
                 try
