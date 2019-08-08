@@ -60,6 +60,7 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetDataPages(daoConn.connStr, daoConn.connDB, projStarInfoCol, findStr, sortStr, 0, 1, fieldStr);
             if (queryRes.Count == 0) return;
             long rt = long.Parse(queryRes[0]["lastUpdateTime"].ToString());
+            if (lt >= rt) return;
             //
             var updateDict = new Dictionary<string, JObject>();
             var list = new List<string>();
@@ -108,6 +109,40 @@ namespace NEL_FutureDao_BT.task
         private void handleProjUpdateCount()
         {
             //
+            string key = "updateCount";
+            long lt = GetLTime(key);
+
+            string findStr = new JObject { { "lastUpdateTime", new JObject { { "$gt", lt } } } }.ToString();
+            string sortStr = "{'lastUpdateTime':-1}";
+            string fieldStr = "{'lastUpdateTime':1}";
+            var queryRes = mh.GetDataPages(daoConn.connStr, daoConn.connDB, projUpdateInfoCol, findStr, sortStr, 0, 1, fieldStr);
+            if (queryRes.Count == 0) return;
+            long rt = long.Parse(queryRes[0]["lastUpdateTime"].ToString());
+            if (lt >= rt) return;
+
+            var updateDict = new Dictionary<string, JObject>();
+            var list = new List<string>();
+            list.Add(new JObject { { "$match", new JObject { { "lastUpdateTime", new JObject { { "$gt", lt }, { "$lte", rt } } } } } }.ToString());
+            list.Add(new JObject { { "$group", new JObject { { "_id", "$projId" }, { "sum", new JObject { { "$sum", 1 } } } } } }.ToString());
+            queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, projUpdateInfoCol, list);
+            if (queryRes.Count > 0)
+            {
+                updateDict = queryRes.ToDictionary(k => k["_id"].ToString(), v => new JObject { { "updateCount", long.Parse(v["sum"].ToString()) } });
+            }
+            if(updateDict.Count > 0)
+            {
+                var updateJa = updateDict.ToDictionary(
+                    k => new JObject { { "projId", k.Key } }.ToString(),
+                    v => new JObject { { "$set", v.Value } }.ToString()
+                    );
+                foreach (var item in updateJa)
+                {
+                    mh.UpdateData(daoConn.connStr, daoConn.connDB, projInfoCol, item.Value, item.Key);
+                }
+                //
+                UpdateLTime(key, rt);
+            }
+
         }
         private void handleProjDiscussCount()
         {
