@@ -2,6 +2,7 @@
 using NEL_FutureDao_BT.core;
 using NEL_FutureDao_BT.lib;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace NEL_FutureDao_BT.task
@@ -71,6 +72,7 @@ namespace NEL_FutureDao_BT.task
 
 
             // projTeamInfoCol
+            /*
             findStr = new string[] {
                 EmailState.sendBeforeStateAtInvited
             }.toFilter("emailVerifyState").ToString();
@@ -85,6 +87,8 @@ namespace NEL_FutureDao_BT.task
                     handle(item, projTeamInfoCol, true);
                 }
             }
+            */
+            processProjTeam();
 
             Log(batchInterval);
             //
@@ -104,7 +108,48 @@ namespace NEL_FutureDao_BT.task
             mh.setIndex(daoConn.connStr, daoConn.connDB, projTeamInfoCol, "{'emailVerifyState':1}", "i_emailVerifyState");
             hasCreateIndex = true;
         }
-        
+        private void processProjTeam()
+        {
+            var match = new JObject { { "$match", new JObject { { "emailVerifyState", EmailState.sendBeforeStateAtInvited } } } }.ToString();
+            var lookup = new JObject{{"$lookup", new JObject {
+                {"from", userInfoCol },
+                {"localField", "userId" },
+                {"foreignField", "userId" },
+                { "as", "us"}
+            } } }.ToString();
+            var project = new JObject { { "$project",
+                    MongoFieldHelper.toReturn(new string[] { "projId", "userId", "emailVerifyState", "us.username","us.email" })
+            } }.ToString();
+            var list = new List<string>();
+            var sort = new JObject { { "$sort", new JObject { { "time", 1 } } } }.ToString();
+            var limit = new JObject { { "$limit", 100 } }.ToString();
+            list.Add(match);
+            list.Add(lookup);
+            list.Add(sort);
+            list.Add(limit);
+            list.Add(project);
+            var queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, projTeamInfoCol, list);
+            if(queryRes.Count > 0)
+            {
+                foreach(var item in queryRes)
+                {
+                    string projId = item["projId"].ToString();
+                    string userId = item["userId"].ToString();
+                    string username = ((JArray)item["us"])[0]["username"].ToString();
+                    string email = ((JArray)item["us"])[0]["email"].ToString();
+                    string emailVerifyState = item["emailVerifyState"].ToString();
+                    string vcode = UIDHelper.generateVerifyCode();
+                    if (toMessage(emailVerifyState, username, email, projId, vcode, out string message, out string hasSendState))
+                    {
+                        eh.send(message, email, true);
+                        var findStr = new JObject { { "projId", projId},{ "userId", userId } }.ToString();
+                        var updateStr = new JObject { { "$set", new JObject { { "emailVerifyCode", vcode }, { "emailVerifyState", hasSendState }, { "lastUpdateTime", TimeHelper.GetTimeStamp() } } } }.ToString();
+                        mh.UpdateData(daoConn.connStr, daoConn.connDB, projTeamInfoCol, updateStr, findStr);
+                    }
+                }
+            }
+        }
+
         private void handle(JToken jt, string coll, bool hasProjId=false)
         {
             string username = jt["username"].ToString();
