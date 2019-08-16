@@ -16,6 +16,7 @@ namespace NEL_FutureDao_BT.task
         private string projInfoCol;
         private string projStarInfoCol;
         private string projUpdateInfoCol;
+        private string projUpdateStarInfoCol;
         private string projDiscussInfoCol;
         private string projDiscussZanInfoCol;
         private string projUpdateDiscussInfoCol;
@@ -29,6 +30,7 @@ namespace NEL_FutureDao_BT.task
             projInfoCol = cfg["projInfoCol"].ToString();
             projStarInfoCol = cfg["projStarInfoCol"].ToString();
             projUpdateInfoCol = cfg["projUpdateInfoCol"].ToString();
+            projUpdateStarInfoCol = cfg["projUpdateStarInfoCol"].ToString();
             projDiscussInfoCol = cfg["projDiscussInfoCol"].ToString();
             projDiscussZanInfoCol = cfg["projDiscussZanInfoCol"].ToString();
             projUpdateDiscussInfoCol = cfg["projUpdateDiscussInfoCol"].ToString();
@@ -260,7 +262,7 @@ namespace NEL_FutureDao_BT.task
 
             string rColl = projUpdateDiscussInfoCol;
             if (!GetMaxTmAndUpdateIds(rColl, lt, out long rt, out string[] ids, true)) return;
-            int size = 100;
+            int size = batchSize;
             int cnt = ids.Length;
             for (int skip = 0; skip < cnt; skip += size)
             {
@@ -276,7 +278,22 @@ namespace NEL_FutureDao_BT.task
 
         private void handleProjUpdateZanCount()
         {
+            string key = "projUpdateZanCount";
+            long lt = GetLTime(key);
 
+            string rColl = projUpdateStarInfoCol;
+            if (!GetMaxTmAndUpdateIds(rColl, lt, out long rt, out string[] ids)) return;
+            int size = batchSize;
+            int cnt = ids.Length;
+            for (int skip = 0; skip < cnt; skip += size)
+            {
+                var idArr = ids.Skip(skip).Take(size).ToArray();
+                var findJo = idArr.toFilter("updateId");
+                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
+                GetCountAndUpdateByUpdateId(findJo, rColl, projUpdateInfoCol, "zanCount");
+            }
+            //
+            UpdateLTime(key, rt);
         }
 
 
