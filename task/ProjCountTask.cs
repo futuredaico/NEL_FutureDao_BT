@@ -377,7 +377,7 @@ namespace NEL_FutureDao_BT.task
                 mh.PutData(daoConn.connStr, daoConn.connDB, daoCounterCol, newdata);
                 return;
             }
-            string updateStr = new JObject { { "$set", new JObject { { key, time } } } }.ToString();
+            string updateStr = new JObject { { "$set", new JObject { { "lastUpdateTime", time } } } }.ToString();
             mh.UpdateData(daoConn.connStr, daoConn.connDB, daoCounterCol, updateStr, findStr);
         }
         private long GetLTime(string key)
