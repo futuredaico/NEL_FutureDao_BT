@@ -255,6 +255,7 @@ namespace NEL_FutureDao_BT.task
                 }
             }
         }
+
         private void handleUpdateDiscussCount()
         {
             string key = "projUpdateDiscussCount";
@@ -274,8 +275,6 @@ namespace NEL_FutureDao_BT.task
             //
             UpdateLTime(key, rt);
         }
-
-
         private void handleProjUpdateZanCount()
         {
             string key = "projUpdateZanCount";
@@ -360,7 +359,7 @@ namespace NEL_FutureDao_BT.task
         }
         private void handleUpdateDiscussZanCount()
         {
-            string key = "UpdateDiscussZanCount";
+            string key = "projUpdateDiscussZanCount";
             string rColl = projUpdateDiscussZanInfoCol;
             string lColl = projUpdateDiscussInfoCol;
             handleDiscussZanCount(key, rColl, lColl);
