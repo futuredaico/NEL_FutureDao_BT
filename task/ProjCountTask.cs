@@ -84,7 +84,7 @@ namespace NEL_FutureDao_BT.task
             {
                 var idArr = ids.Skip(skip).Take(size).ToArray();
                 var findJo = idArr.toFilter("projId");
-                findJo.Add("lastUpdateTime", rt);
+                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
                 findJo.Add("starState", StarState.StarYes);
 
                 var updateDict = new Dictionary<string, JObject>();
