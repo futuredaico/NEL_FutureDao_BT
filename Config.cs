@@ -37,11 +37,8 @@ namespace NEL_FutureDao_BT
         {
             string startNetType = config["startNetType"].ToString();
             var connInfo = config["DBConnInfoList"].Children().Where(p => p["netType"].ToString() == startNetType).First();
-            //remoteDbConnInfo = GetDbConnInfo(connInfo, "remoteConnStr", "remoteDatabase");
-            //localDbConnInfo = GetDbConnInfo(connInfo, "localConnStr", "localDatabase");
-            //blockDbConnInfo = GetDbConnInfo(connInfo, "blockConnStr", "blockDatabase");
-            //analyDbConnInfo = GetDbConnInfo(connInfo, "analyConnStr", "analyDatabase");
-            //notifyDbConnInfo = GetDbConnInfo(connInfo, "notifyConnStr", "notifyDatabase");
+            remoteDbConnInfo = GetDbConnInfo(connInfo, "remoteConnStr", "remoteDatabase");
+            localDbConnInfo = GetDbConnInfo(connInfo, "localConnStr", "localDatabase");
             daoDbConnInfo = GetDbConnInfo(connInfo, "daoConnStr", "daoDatabase");
         }
 

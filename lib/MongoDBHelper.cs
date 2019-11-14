@@ -21,21 +21,13 @@ namespace NEL.NNS.lib
 
             return txCount;
         }
-        public JArray GetDataPages(string mongodbConnStr, string mongodbDatabase, string coll, string findStr = "{}", string sortStr = "{}", int skip = 0, int limit = 0, string fieldStr = "{'_id':0}")
+        public JArray GetData(string mongodbConnStr, string mongodbDatabase, string coll, string findStr, string fieldStr = "{'_id':0}")
         {
             var client = new MongoClient(mongodbConnStr);
             var database = client.GetDatabase(mongodbDatabase);
             var collection = database.GetCollection<BsonDocument>(coll);
 
-            List<BsonDocument> query = null;
-            if (limit == 0)
-            {
-                query = collection.Find(BsonDocument.Parse(findStr)).Project(BsonDocument.Parse(fieldStr)).ToList();
-            }
-            else
-            {
-                query = collection.Find(BsonDocument.Parse(findStr)).Project(BsonDocument.Parse(fieldStr)).Sort(sortStr).Skip(skip).Limit(limit).ToList();
-            }
+            List<BsonDocument> query = collection.Find(BsonDocument.Parse(findStr)).Project(BsonDocument.Parse(fieldStr)).ToList(); ;
             client = null;
 
             if (query != null && query.Count > 0)
@@ -44,13 +36,13 @@ namespace NEL.NNS.lib
             }
             else { return new JArray(); }
         }
-        public JArray GetData(string mongodbConnStr, string mongodbDatabase, string coll, string findStr, string fieldStr = "{'_id':0}")
+        public JArray GetData(string mongodbConnStr, string mongodbDatabase, string coll, string findStr, string sortStr, int skip, int limit, string fieldStr = "{'_id':0}")
         {
             var client = new MongoClient(mongodbConnStr);
             var database = client.GetDatabase(mongodbDatabase);
             var collection = database.GetCollection<BsonDocument>(coll);
 
-            List<BsonDocument> query = collection.Find(BsonDocument.Parse(findStr)).Project(BsonDocument.Parse(fieldStr)).ToList(); ;
+            List<BsonDocument> query = collection.Find(BsonDocument.Parse(findStr)).Project(BsonDocument.Parse(fieldStr)).Sort(sortStr).Skip(skip).Limit(limit).ToList();
             client = null;
 
             if (query != null && query.Count > 0)
@@ -133,7 +125,7 @@ namespace NEL.NNS.lib
 
             client = null;
         }
-
+        
         //
         public void UpdateData(string mongodbConnStr, string mongodbDatabase, string coll, string updateStr, string whereStr)
         {
@@ -141,6 +133,15 @@ namespace NEL.NNS.lib
             var database = client.GetDatabase(mongodbDatabase);
             var collection = database.GetCollection<BsonDocument>(coll);
             collection.UpdateOne(BsonDocument.Parse(whereStr), BsonDocument.Parse(updateStr));
+
+            client = null;
+        }
+        public void UpdateDecimal(string mongodbConnStr, string mongodbDatabase, string coll, BsonDocument updateBson, string whereStr)
+        {
+            var client = new MongoClient(mongodbConnStr);
+            var database = client.GetDatabase(mongodbDatabase);
+            var collection = database.GetCollection<BsonDocument>(coll);
+            collection.UpdateOne(BsonDocument.Parse(whereStr), updateBson);
 
             client = null;
         }

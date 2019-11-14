@@ -12,29 +12,21 @@ namespace NEL_FutureDao_BT.task
     {
         private MongoDBHelper mh = new MongoDBHelper();
         private DbConnInfo daoConn;
-        private string daoCounterCol = "daoCounter";
-        private string projInfoCol;
-        private string projStarInfoCol;
-        private string projUpdateInfoCol;
-        private string projUpdateStarInfoCol;
-        private string projDiscussInfoCol;
-        private string projDiscussZanInfoCol;
-        private string projUpdateDiscussInfoCol;
-        private string projUpdateDiscussZanInfoCol;
+        private string daoCounterCol = "daocounters";
+        private string projInfoCol = "daoprojinfos";
+        private string projStarInfoCol = "daoprojstarinfos";
+        private string projUpdateInfoCol = "daoprojupdateinfos";
+        private string projUpdateStarInfoCol = "daoprojupdatestarinfos";
+        private string projDiscussInfoCol = "daoprojdiscussinfos";
+        private string projDiscussZanInfoCol = "daoprojdiscusszaninfos";
+        private string projUpdateDiscussInfoCol = "daoprojupdatediscussinfos";
+        private string projUpdateDiscussZanInfoCol = "daoprojupdatediscusszaninfos";
         private int batchSize;
         private int batchInterval;
         public ProjCountTask(string name) : base(name) { }
         public override void initConfig(JObject config)
         {
             JToken cfg = config["TaskList"].Where(p => p["taskName"].ToString() == name() && p["taskNet"].ToString() == networkType()).ToArray()[0]["taskInfo"];
-            projInfoCol = cfg["projInfoCol"].ToString();
-            projStarInfoCol = cfg["projStarInfoCol"].ToString();
-            projUpdateInfoCol = cfg["projUpdateInfoCol"].ToString();
-            projUpdateStarInfoCol = cfg["projUpdateStarInfoCol"].ToString();
-            projDiscussInfoCol = cfg["projDiscussInfoCol"].ToString();
-            projDiscussZanInfoCol = cfg["projDiscussZanInfoCol"].ToString();
-            projUpdateDiscussInfoCol = cfg["projUpdateDiscussInfoCol"].ToString();
-            projUpdateDiscussZanInfoCol = cfg["projUpdateDiscussZanInfoCol"].ToString();
             batchSize = int.Parse(cfg["batchSize"].ToString());
             batchInterval = int.Parse(cfg["batchInterval"].ToString());
             daoConn = Config.daoDbConnInfo;

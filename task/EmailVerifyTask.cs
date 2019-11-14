@@ -11,9 +11,9 @@ namespace NEL_FutureDao_BT.task
     {
         private MongoDBHelper mh = new MongoDBHelper();
         private DbConnInfo daoConn;
-        private string userInfoCol;
-        private string projInfoCol;
-        private string projTeamInfoCol;
+        private string userInfoCol = "daouserinfos";
+        private string projInfoCol = "daoprojinfos";
+        private string projTeamInfoCol = "daoprojteaminfos";
         private int batchSize;
         private int batchInterval;
         private string emailRegisterUrl;
@@ -31,9 +31,7 @@ namespace NEL_FutureDao_BT.task
         public override void initConfig(JObject config)
         {
             JToken cfg = config["TaskList"].Where(p => p["taskName"].ToString() == name() && p["taskNet"].ToString() == networkType()).ToArray()[0]["taskInfo"];
-            userInfoCol = cfg["userInfoCol"].ToString();
-            projInfoCol = cfg["projInfoCol"].ToString();
-            projTeamInfoCol = cfg["projTeamInfoCol"].ToString();
+            
             batchSize = int.Parse(cfg["batchSize"].ToString());
             batchInterval = int.Parse(cfg["batchInterval"].ToString());
             emailRegisterUrl = cfg["verifyModule"]["registerUrl"].ToString();
@@ -61,7 +59,7 @@ namespace NEL_FutureDao_BT.task
             string fieldStr = "{'username':1,'email':1,'emailVerifyState':1}";
             while (true)
             {
-                var queryRes = mh.GetDataPages(daoConn.connStr, daoConn.connDB, userInfoCol, findStr, sortStr, 0, batchSize, fieldStr);
+                var queryRes = mh.GetData(daoConn.connStr, daoConn.connDB, userInfoCol, findStr, sortStr, 0, batchSize, fieldStr);
                 if (queryRes.Count == 0) break;
 
                 foreach (var item in queryRes)
@@ -69,25 +67,6 @@ namespace NEL_FutureDao_BT.task
                     handle(item, userInfoCol);
                 }
             }
-
-
-            // projTeamInfoCol
-            /*
-            findStr = new string[] {
-                EmailState.sendBeforeStateAtInvited
-            }.toFilter("emailVerifyState").ToString();
-            fieldStr = "{'projId':1,'username':1,'email':1,'emailVerifyState':1}";
-            while (true)
-            {
-                var queryRes = mh.GetDataPages(daoConn.connStr, daoConn.connDB, projTeamInfoCol, findStr, sortStr, 0, batchSize, fieldStr);
-                if (queryRes.Count == 0) break;
-
-                foreach (var item in queryRes)
-                {
-                    handle(item, projTeamInfoCol, true);
-                }
-            }
-            */
             processProjTeam();
 
             Log(batchInterval);
@@ -98,11 +77,9 @@ namespace NEL_FutureDao_BT.task
             mh.setIndex(daoConn.connStr, daoConn.connDB, userInfoCol, "{'username':1,'email':1,'password':1}", "i_username_email_pswd");
             mh.setIndex(daoConn.connStr, daoConn.connDB, userInfoCol, "{'email':1}", "i_email");
             mh.setIndex(daoConn.connStr, daoConn.connDB, userInfoCol, "{'emailVerifyState':1}", "i_emailVerifyState");
-
             mh.setIndex(daoConn.connStr, daoConn.connDB, projInfoCol, "{'projId':1}", "i_projId");
             mh.setIndex(daoConn.connStr, daoConn.connDB, projInfoCol, "{'projName':1}", "i_projName");
             mh.setIndex(daoConn.connStr, daoConn.connDB, projInfoCol, "{'projTitle':1}", "i_projTitle");
-
             mh.setIndex(daoConn.connStr, daoConn.connDB, projTeamInfoCol, "{'projId':1}", "i_projId");
             mh.setIndex(daoConn.connStr, daoConn.connDB, projTeamInfoCol, "{'projId':1,'userId':1}", "i_projId_userId");
             mh.setIndex(daoConn.connStr, daoConn.connDB, projTeamInfoCol, "{'emailVerifyState':1}", "i_emailVerifyState");

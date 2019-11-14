@@ -13,6 +13,14 @@ namespace NEL_FutureDao_BT
         {
             AddTask(new EmailVerifyTask("EmailVerifyTask"));
             AddTask(new ProjCountTask("ProjCountTask"));
+            //
+            AddTask(new ProjContractTask("ProjContractTask"));
+            AddTask(new ProjFinanceTask("ProjFinanceTask"));
+            AddTask(new ProjFinancePriceTask("ProjFinancePriceTask"));
+            AddTask(new ProjFinanceBalanceTask("ProjFinanceBalanceTask"));
+            //AddTask(new ProjProposalTask("ProjProposalTask"));
+            AddTask(new ProjOrderTask("ProjOrderTask"));
+
         }
         private static void StartTask()
         {
@@ -53,7 +61,6 @@ namespace NEL_FutureDao_BT
                 list.Count(p => !p.isRuning()),
                 list.Count));
         }
-
         static void Main(string[] args)
         {
             Config.loadConfig("config.json");
