@@ -90,13 +90,13 @@ namespace NEL_FutureDao_BT.task
 
             foreach(var item in queryRes)
             {
-                handleOrderTimeout(item);
+                handleOrderTimeout(item, now);
             }
         }
-        private void handleOrderTimeout(JToken jt)
+        private void handleOrderTimeout(JToken jt, long now)
         {
             var findStr = new JObject { { "orderId", jt["orderId"] } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject { { "orderState", OrderState.PayTimeout } } } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject { { "orderState", OrderState.PayTimeout },{ "markTime", now } } } }.ToString();
             mh.UpdateData(daoConn.connStr, daoConn.connDB, projFinanceOrderCol, updateStr, findStr);
         }
         
