@@ -105,7 +105,7 @@ namespace NEL_FutureDao_BT.task
                 }
                 if (flag)
                 {
-                    newdata.recordType = getRecordType();
+                    newdata.recordType = getRecordType(tm);
                     newdata.recordTime = tm;
                     mh.PutData<TokenPriceInfo>(daoConn.connStr, daoConn.connDB, projFinancePriceHistCol, newdata);
                 }
@@ -114,9 +114,10 @@ namespace NEL_FutureDao_BT.task
             Console.WriteLine("{0}.[{1}] has processed:{2}", name(), key, tm);
         }
 
-        private int getRecordType()
+        private int getRecordType(long tm)
         {
-            return DateTime.Now.Hour/4 == 0 ? RecordType.Four: RecordType.One;
+            return tm%(4*OneHourSeconds) == 0? RecordType.Four : RecordType.One;
+            //return DateTime.Now.Hour/4 == 0 ? RecordType.Four: RecordType.One;
         }
 
         private string[] getProjId()
