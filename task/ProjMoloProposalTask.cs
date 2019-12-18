@@ -493,7 +493,7 @@ namespace NEL_FutureDao_BT.task
             //
             var r1 = jtArr
                 .Where(p => p["event"].ToString() == "ProcessProposal" && p["didPass"].ToString() == "1")
-                .GroupBy(p => p["memberAddress"].ToString(), (k, g) => {
+                .GroupBy(p => p["applicant"].ToString(), (k, g) => {
                     return new JObject
                     {
                         { "address", k},
@@ -515,6 +515,12 @@ namespace NEL_FutureDao_BT.task
             //
             r0.AddRange(r1);
             r0.AddRange(r2);
+            if(r0.Any(p => p["address"].ToString() == "0x239498540a9508c0ff9271d2d4ffe88ab73361e3"))
+            {
+                var c1 = r0.Where(p => p["address"].ToString() == "0x239498540a9508c0ff9271d2d4ffe88ab73361e3").ToArray()[0];
+                Console.WriteLine(c1.ToString());
+                Console.WriteLine(c1.ToString());
+            }
             var rr = r0.GroupBy(p => p["address"].ToString(), (k, g) =>
             {
                 return new
@@ -573,12 +579,21 @@ namespace NEL_FutureDao_BT.task
         {
             tempNotClearAllFlag = false;
             if (queryRes.All(p => p["memberAddress"] == null)) return;
-            var events = new string[] { "SubmitVote", "ProcessProposal" };
-            var rr = queryRes.Where(p => events.Contains(p["event"].ToString())).Select(p => new {
+
+            var rr = queryRes.Where(p => p["event"].ToString() == "SubmitVote").Select(p => new {
                 address = p["memberAddress"].ToString(),
                 proposalIndex = p["proposalIndex"].ToString()
             }).ToArray();
-            var ad = queryRes.Select(p => p["memberAddress"].ToString()).Distinct().ToArray();
+
+            var rb =
+            queryRes.Select(p =>
+            {
+                var eventName = p["event"].ToString();
+                if (eventName == "SummonComplete") return p["summoner"].ToString();
+                if (eventName == "ProcessProposal") return p["applicant"].ToString();
+                if (eventName == "Ragequit") return p["memberAddress"].ToString();
+                return "";
+            }).Where(p => p != "").Distinct().ToArray();
             // 清除临时字段数据
             tempNotClearAllFlag = false;
             var dbZERO = decimal.Zero.format();
@@ -590,7 +605,7 @@ namespace NEL_FutureDao_BT.task
                     var updateStr = new JObject { { "$set", new JObject { {"balanceTp",0 }} } }.ToString();
                     mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
                 }
-                foreach(var item in ad)
+                foreach(var item in rb)
                 {
                     var findStr = new JObject { { "projId", projId }, { "proposalIndex", "" }, { "address", item } }.ToString();
                     var updateStr = new JObject { { "$set", new JObject { { "balanceTp", 0 } } } }.ToString();
@@ -823,7 +838,7 @@ namespace NEL_FutureDao_BT.task
     class BalanceType
     {
         public const string Balance = "0";
-        public const string ZanNot = "1";
-        public const string ZanYes = "2";
+        public const string ZanYes = "1";
+        public const string ZanNot = "2";
     }
 }
