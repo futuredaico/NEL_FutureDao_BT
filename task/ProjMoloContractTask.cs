@@ -78,12 +78,13 @@ namespace NEL_FutureDao_BT.task
                 {
                     processNewContract(index, hashTypeDict);
                 }
-                var res = queryRes.Where(p => hashDict.ContainsKey(p["contractHash"].ToString())).ToArray();
+                var res = queryRes.Where(p => hashDict.ContainsKey(p["contractHash"].ToString().ToLower())).ToArray();
                 if (res.Count() == 0) continue;
                 res = queryRes.Select(p => dataFormat(p)).ToArray();
                 foreach (var item in res)
                 {
                     if (item == null) continue;
+                    item["contractHash"] = item["contractHash"].ToString().ToLower();
                     findStr = new JObject { { "transactionHash", item["transactionHash"] }, { "event", item["event"] } }.ToString();
                     if (mh.GetDataCount(lConn.connStr, lConn.connDB, notifyCol, findStr) == 0)
                     {
@@ -134,7 +135,7 @@ namespace NEL_FutureDao_BT.task
                 mh.PutData(lConn.connStr, lConn.connDB, notifyCounter, new JArray { joArr });
             }
         }
-        long[] cc = new long[]
+        long[] c1 = new long[]
         {
             9055683,
     8983158,
@@ -292,7 +293,13 @@ namespace NEL_FutureDao_BT.task
     8177869,
     8177810
         };
-
+        long[] cc = new long[]
+        {
+            6983020,
+    6983044,
+    6983051,
+    6983180
+        };
         // **********************************
         private void processNewContract(long index, Dictionary<string, string> newHashDict)
         {
@@ -444,9 +451,9 @@ namespace NEL_FutureDao_BT.task
 
             newHashDict = 
                 queryRes.Where(p => p["type"].ToString() != MoloType.Init)
-                .ToDictionary(k => k["contractHash"].ToString(), v => v["projId"].ToString());
+                .ToDictionary(k => k["contractHash"].ToString().ToLower(), v => v["projId"].ToString());
 
-            return queryRes.ToDictionary(k => k["contractHash"].ToString(), v => v["projId"].ToString());
+            return queryRes.ToDictionary(k => k["contractHash"].ToString().ToLower(), v => v["projId"].ToString());
         }
         
         private void Log(long lh, long rh, string key = "logs")
