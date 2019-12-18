@@ -10,7 +10,7 @@ namespace NEL_FutureDao_BT
     class Program
     {
         private static void InitTask()
-        {
+        {/*
             AddTask(new EmailVerifyTask("EmailVerifyTask"));
             AddTask(new ProjCountTask("ProjCountTask"));
             //
@@ -20,6 +20,10 @@ namespace NEL_FutureDao_BT
             AddTask(new ProjFinanceBalanceTask("ProjFinanceBalanceTask"));
             //AddTask(new ProjProposalTask("ProjProposalTask"));
             AddTask(new ProjOrderTask("ProjOrderTask"));
+            */
+            AddTask(new ProjMoloContractTask("ProjMoloContractTask"));
+            AddTask(new ProjMoloProposalTask("ProjMoloProposalTask"));
+            AddTask(new ProjMoloDiscussTask("ProjMoloDiscussTask"));
 
         }
         private static void StartTask()

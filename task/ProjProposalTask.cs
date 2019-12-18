@@ -7,7 +7,7 @@ using System;
 using System.Linq;
 
 namespace NEL_FutureDao_BT.task
-{
+{/*
     class ProjProposalTask: AbsTask
     {
         private MongoDBHelper mh = new MongoDBHelper();
@@ -324,4 +324,5 @@ namespace NEL_FutureDao_BT.task
             return long.Parse(queryRes[0]["lastBlockIndex"].ToString());
         }
     }
+    */
 }
