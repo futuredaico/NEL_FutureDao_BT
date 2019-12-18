@@ -15,7 +15,7 @@ namespace NEL_FutureDao_BT.task
         private DbConnInfo rConn;
         private DbConnInfo lConn;
         private DbConnInfo blockConn;
-        private string eventLogsCounter = "molocounters";
+        private string eventLogsCounter = "counters";
         private string eventLogsCol = "logmoloches";
         private string notifyCounter = "molonotifycounters";
         private string notifyCol = "molonotifyinfos";
