@@ -17,8 +17,8 @@ namespace NEL_FutureDao_BT.task
         private DbConnInfo blockConn;
         private string eventLogsCounter = "molocounters";
         private string eventLogsCol = "logmoloches";
-        private string notifyCounter = "molonotifycounters2";
-        private string notifyCol = "molonotifyinfos2";
+        private string notifyCounter = "molonotifycounters";
+        private string notifyCol = "molonotifyinfos";
         private string projHashCol = "moloprojhashinfos";
         //private string blockCol = "blocks";
         //
@@ -45,19 +45,19 @@ namespace NEL_FutureDao_BT.task
 
             var rh = GetR();
             var lh = GetL();
-            rh = 9055683;
+            //rh = 9055683;
             //lh = 8177810-1;
             if (lh >= rh)
             {
                 Log(lh, rh);
                 return;
             }
-            foreach(var hh in cc.OrderBy(p => p).ToArray())
+            //foreach(var hh in cc.OrderBy(p => p).ToArray())
+            //{
+            //    var index = hh;
+            //}
+            for (var index = lh + 1; index <= rh; ++index)
             {
-                var index = hh;
-                //}
-                //for (var index = lh + 1; index <= rh; ++index)
-                //{
                 var blockTime = 0L;// GetBlockTime(index);
                 //
                 var findStr = new JObject { { "blockNumber", index } }.ToString();

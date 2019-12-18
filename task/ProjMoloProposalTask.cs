@@ -223,12 +223,12 @@ namespace NEL_FutureDao_BT.task
                 log("moloProposalTask", lh, rh);
                 return;
             }
-            foreach (var hh in cc.OrderBy(p => p).ToArray())
-            {
-                var index = hh;
-            //}
-            //for (var index = lh + 1; index <= rh; ++index)
+            //foreach (var hh in cc.OrderBy(p => p).ToArray())
             //{
+            //    var index = hh;
+            //}
+            for (var index = lh + 1; index <= rh; ++index)
+            {
                 var findStr = new JObject { { "blockNumber", index }, { "projId", projId } }.ToString();
                 var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCol, findStr);
                 if(queryRes.Count == 0)
