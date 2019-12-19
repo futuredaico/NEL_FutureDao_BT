@@ -19,7 +19,8 @@ namespace NEL_FutureDao_BT.task
         private string moloProjCounter = "molocounters";
         private string moloProjProposalInfoCol = "moloproposalinfos";
         private string moloProjBalanceInfoCol = "moloprojbalanceinfos";
-        private long OneDaySeconds = 24 * 60 * 60;
+        //private long OneDaySeconds = 24 * 60 * 60; //
+        private long OneDaySeconds = 600; // tmp
 
         public ProjMoloProposalTask(string name) : base(name) { }
 
@@ -671,18 +672,12 @@ namespace NEL_FutureDao_BT.task
 
 
         // 状态变动
-        private void handleProposalStateNew()
-        {
-            var findStr = new JObject { { "$or", new JArray {
-                new JObject { { "proposalState", ProposalState.Voting} },
-                new JObject { { "proposalState", ProposalState.Noting} }
-            } } }.ToString();
-        }
         private void handleProposalState()
         {
             var now = TimeHelper.GetTimeStamp();
             // Voting -> Noting/PassNot
-            var timeLimit = 7 * OneDaySeconds;
+            //var timeLimit = 7 * OneDaySeconds;
+            var timeLimit = OneDaySeconds;
             var findStr = new JObject { { "proposalState", ProposalState.Voting},{ "blockTime", new JObject { { "$lt", now - timeLimit } } } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             var res = filterProjHasProccedBlockTime(queryRes, timeLimit);
@@ -701,7 +696,7 @@ namespace NEL_FutureDao_BT.task
             }
             
             // Noting -> PassYes
-            timeLimit = 14 * OneDaySeconds;
+            //timeLimit = 14 * OneDaySeconds;
             findStr = new JObject { { "proposalState", ProposalState.Noting }, { "blockTime", new JObject { { "$lt", now - timeLimit } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             res = filterProjHasProccedBlockTime(queryRes, timeLimit);
