@@ -671,6 +671,13 @@ namespace NEL_FutureDao_BT.task
 
 
         // 状态变动
+        private void handleProposalStateNew()
+        {
+            var findStr = new JObject { { "$or", new JArray {
+                new JObject { { "proposalState", ProposalState.Voting} },
+                new JObject { { "proposalState", ProposalState.Noting} }
+            } } }.ToString();
+        }
         private void handleProposalState()
         {
             var now = TimeHelper.GetTimeStamp();

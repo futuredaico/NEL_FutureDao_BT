@@ -9,7 +9,8 @@ namespace NEL_FutureDao_BT.lib
 {
     class EthHelper
     {
-        static string apiUrl = "https://node3.web3api.com";
+        //static string apiUrl = "https://node3.web3api.com";
+        static string apiUrl = "https://ropsten.infura.io/v3/638c755c81fe495e85debe581520b373";
         static int preLen = 64*13 + 2;
         static string ethSplit(string ss)
         {
