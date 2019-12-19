@@ -19,7 +19,6 @@ namespace NEL_FutureDao_BT.task
         private string moloProjCounter = "molocounters";
         private string moloProjProposalInfoCol = "moloproposalinfos";
         private string moloProjBalanceInfoCol = "moloprojbalanceinfos";
-        private string blockCol = "blocks";
         private long OneDaySeconds = 24 * 60 * 60;
 
         public ProjMoloProposalTask(string name) : base(name) { }
@@ -226,7 +225,6 @@ namespace NEL_FutureDao_BT.task
             //foreach (var hh in cc.OrderBy(p => p).ToArray())
             //{
             //    var index = hh;
-            //}
             for (var index = lh + 1; index <= rh; ++index)
             {
                 var findStr = new JObject { { "blockNumber", index }, { "projId", projId } }.ToString();
@@ -760,17 +758,7 @@ namespace NEL_FutureDao_BT.task
 
             return queryRes.ToDictionary(k => k["counter"].ToString(), v => (long)v["lastBlockIndex"]);
         }
-        private Dictionary<long, long> getProjBlockTime(long[] blockNumberArr)
-        {
-            var findStr = MongoFieldHelper.toFilter(blockNumberArr, "number").ToString();
-            var fieldStr = new JObject { { "number", 1 }, { "timestamp", 1 } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, blockCol, findStr, fieldStr);
-            if (queryRes.Count == 0) return new Dictionary<long, long>() { { blockNumberArr[0], 1576034405 } };
 
-            return queryRes.ToDictionary(k => (long)k["number"], v => (long)v["timestamp"]);
-        }
-
-        
         private void log(string key, long lh, long rh)
         {
             Console.WriteLine("{0}.[{1}]processed: {2}/{3}", name(), key, lh, rh);

@@ -14,13 +14,11 @@ namespace NEL_FutureDao_BT.task
         private MongoDBHelper mh = new MongoDBHelper();
         private DbConnInfo rConn;
         private DbConnInfo lConn;
-        private DbConnInfo blockConn;
         private string eventLogsCounter = "counters";
         private string eventLogsCol = "logs";
         private string notifyCounter = "molonotifycounters";
         private string notifyCol = "molonotifyinfos";
         private string projHashCol = "moloprojhashinfos";
-        //private string blockCol = "blocks";
         //
         public ProjMoloContractTask(string name) : base(name) { }
 
@@ -28,7 +26,6 @@ namespace NEL_FutureDao_BT.task
         {
             rConn = Config.remoteDbConnInfo;
             lConn = Config.localDbConnInfo;
-            blockConn = rConn;
 
             initIndex();
         }
@@ -45,8 +42,6 @@ namespace NEL_FutureDao_BT.task
 
             var rh = GetR();
             var lh = GetL();
-            //rh = 9055683;
-            //lh = 8177810-1;
             if (lh >= rh)
             {
                 Log(lh, rh);
@@ -55,32 +50,29 @@ namespace NEL_FutureDao_BT.task
             //foreach(var hh in cc.OrderBy(p => p).ToArray())
             //{
             //    var index = hh;
-            //}
             for (var index = lh + 1; index <= rh; ++index)
             {
-                var blockTime = 0L;// GetBlockTime(index);
-                //
                 var findStr = new JObject { { "blockNumber", index } }.ToString();
                 var queryRes = mh.GetData(rConn.connStr, rConn.connDB, eventLogsCol, findStr);
                 if (queryRes.Count == 0)
                 {
-                    UpdateL(index, blockTime);
-                    UpdateL(index, blockTime, nilArr);
+                    UpdateL(index, 0);
+                    UpdateL(index, 0, nilArr);
                     Log(index, rh);
                     continue;
                 }
-                blockTime = long.Parse(queryRes[0]["timestamp"].ToString());
+                var blockTime = long.Parse(queryRes[0]["timestamp"].ToString());
 
                 var hashArr = queryRes.Select(p => p["contractHash"].ToString()).Distinct().ToArray();
-                var hashDict = getProjId(hashArr, out Dictionary<string, string> hashTypeDict);
+                var hashDict = getProjId(hashArr, out Dictionary<string, string> hashTypeDict, out Dictionary<string, long> hashDecimalsDict);
                 if (hashDict.Count == 0) continue;
                 if (hashTypeDict.Count > 0)
                 {
-                    processNewContract(index, hashTypeDict);
+                    processNewContract(index, hashTypeDict, hashDecimalsDict);
                 }
                 var res = queryRes.Where(p => hashDict.ContainsKey(p["contractHash"].ToString().ToLower())).ToArray();
                 if (res.Count() == 0) continue;
-                res = queryRes.Select(p => dataFormat(p)).ToArray();
+                res = queryRes.Select(p => dataFormat(p, hashDecimalsDict.GetValueOrDefault(p["contractHash"].ToString()))).ToArray();
                 foreach (var item in res)
                 {
                     if (item == null) continue;
@@ -135,7 +127,7 @@ namespace NEL_FutureDao_BT.task
                 mh.PutData(lConn.connStr, lConn.connDB, notifyCounter, new JArray { joArr });
             }
         }
-        long[] c1 = new long[]
+        long[] cc = new long[]
         {
             9055683,
     8983158,
@@ -293,15 +285,8 @@ namespace NEL_FutureDao_BT.task
     8177869,
     8177810
         };
-        long[] cc = new long[]
-        {
-            6983020,
-    6983044,
-    6983051,
-    6983180
-        };
         // **********************************
-        private void processNewContract(long index, Dictionary<string, string> newHashDict)
+        private void processNewContract(long index, Dictionary<string, string> newHashDict, Dictionary<string, long> hashDecimalsDict)
         {
             var firstIndex = newHashDict.Keys.Select(p => getFirstBlockIndex(p)).Min();
             for (var startIndex = firstIndex; startIndex < index;) {
@@ -313,12 +298,12 @@ namespace NEL_FutureDao_BT.task
                 if (queryRes.Count == 0) continue;
                 //
                 var numberArr = queryRes.Select(p => (long)p["blockNumber"]).Distinct().ToArray();
-                var numberDict = GetBlockTime(numberArr);
                 var res = queryRes.Select(p =>
                 {
-                    var dt = dataFormat(p);
-                    dt["projId"] = newHashDict.GetValueOrDefault(dt["contractHash"].ToString());
-                    dt["blockTime"] = numberDict.GetValueOrDefault((long)dt["blockNumber"]);
+                    var hash = p["contractHash"].ToString();
+                    var dt = dataFormat(p, hashDecimalsDict.GetValueOrDefault(hash));
+                    dt["projId"] = newHashDict.GetValueOrDefault(hash);
+                    dt["blockTime"] = long.Parse(p["blockTime"].ToString());
                     return dt;
                 }).ToArray();
                 saveContractInfo(res);
@@ -357,7 +342,7 @@ namespace NEL_FutureDao_BT.task
             }
         }
 
-        private JObject dataFormat(JToken jt)
+        private JObject dataFormat(JToken jt, long fundDecimals)
         {
             var eventName = jt["event"].ToString();
             var types = (jt["argsTypes"] as JArray).ToArray();
@@ -376,7 +361,7 @@ namespace NEL_FutureDao_BT.task
                 var type = types[i].ToString();
                 var arg = args[i].ToString();
                 var name = names[i];
-                data.Add(name, dataFormat(type, arg, name));
+                data.Add(name, dataFormat(type, arg, name, fundDecimals));
             }
             data.Add("blockNumber", jt["blockNumber"]);
             data.Add("transactionHash", jt["transactionHash"]);
@@ -386,19 +371,17 @@ namespace NEL_FutureDao_BT.task
             
             return data;
         }
-        private string dataFormat(string type, string val, string name="")
+        private string dataFormat(string type, string val, string name="", long fundDecimals=1)
         {
-            /*
-            var c1 = "0x00000000000000000000000000000000000000000000000000000000000000";
-            var r1 = new BigInteger(c1.Substring(2).HexString2Bytes().Reverse().ToArray()).ToString();
-            Console.WriteLine("bool:" + r1);
-
-            c1 = "0x00000000000000000000000000000000000000000000000000000000000001";
-            r1 = new BigInteger(c1.Substring(2).HexString2Bytes().Reverse().ToArray()).ToString();
-            Console.WriteLine("uint8:" + r1);
-            */
             var div = BigInteger.One;
-            if (name == "tokenTribute") div = BigInteger.Parse("1000000000000000000");
+            if (fundDecimals > 0)
+            {
+                if(name == "tokenTribute" || name == "amount")
+                {
+                    div = new BigInteger(Math.Pow(10, fundDecimals));
+                }
+            }
+
             type = type.ToLower();
             if(type == "address")
             {
@@ -419,43 +402,27 @@ namespace NEL_FutureDao_BT.task
             throw new Exception("Not support type:"+type);
         }
 
-        private Dictionary<long, long> GetBlockTime(long[] blockNumberArr)
-        {
-            var findStr = MongoFieldHelper.toFilter(blockNumberArr,  "number").ToString();
-            var fieldStr = new JObject { { "timestamp", 1 } }.ToString();
-            var queryRes = mh.GetData(blockConn.connStr, blockConn.connDB, "blocks", findStr, fieldStr);
-
-            return queryRes.ToDictionary(k => (long)k["number"], v => (long)v["timestamp"]);
-        }
-        /*
-        private long GetBlockTime(long number)
-        {
-            var findStr = new JObject { { "number", number } }.ToString();
-            var fieldStr = new JObject { { "timestamp", 1 } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, blockCol, findStr, fieldStr);
-            if (queryRes.Count == 0) return -1;
-
-            var item = queryRes[0];
-            return long.Parse(item["timestamp"].ToString());
-        }
-        */
-        private Dictionary<string, string> getProjId(string[] hashArr, out Dictionary<string, string> newHashDict)
+        private Dictionary<string, string> getProjId(string[] hashArr, out Dictionary<string, string> newProjIdDict, out Dictionary<string, long> hashDecimalsDict)
         {
             var findStr = "{}"; 
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, projHashCol, findStr);
             if (queryRes.Count == 0)
             {
-                newHashDict = new Dictionary<string, string>();
+                newProjIdDict = new Dictionary<string, string>();
+                hashDecimalsDict = new Dictionary<string, long>();
                 return new Dictionary<string, string>();
             }
-
-            newHashDict = 
+            //
+            newProjIdDict = 
                 queryRes.Where(p => p["type"].ToString() != MoloType.Init)
                 .ToDictionary(k => k["contractHash"].ToString().ToLower(), v => v["projId"].ToString());
-
+            //
+            hashDecimalsDict =
+                queryRes.ToDictionary(k => k["contractHash"].ToString().ToLower(), v => long.Parse(v["fundDecimls"].ToString()));
+            //
             return queryRes.ToDictionary(k => k["contractHash"].ToString().ToLower(), v => v["projId"].ToString());
         }
-        
+
         private void Log(long lh, long rh, string key = "logs")
         {
             Console.WriteLine("{0}.[{1}]processed: {2}/{3}", name(), key, lh, rh);
@@ -510,6 +477,10 @@ namespace NEL_FutureDao_BT.task
             { "Abort", new string[]{ "proposalIndex", "applicantAddress" } }, // applicantAddress = delegateKey
             { "UpdateDelegateKey", new string[]{ "memberAddress", "newDelegateKey" } },
             { "SummonComplete", new string[]{ "summoner", "shares" } },
+            // fund
+            //emit Withdrawal(receiver, amount);
+            { "Withdrawal", new string[]{ "receiver", "amount" } },
+
             // molo.ed ********************
 
 
