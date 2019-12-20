@@ -408,74 +408,6 @@ namespace NEL_FutureDao_BT.task
 
 
         // 余额
-        private void handleProcessProposal(JToken[] jtArr, string projId, long blockNumber)
-        {
-            var rr =
-            jtArr.Where(p => p["didPass"].ToString() == "1").GroupBy(p => p["memberAddress"].ToString(), (k, g) =>
-            {
-                return new
-                {
-                    address = k,
-                    balance = g.Sum(pg => long.Parse(pg["sharesRequested"].ToString())),
-                    type = BalanceType.Balance
-                };
-            }).ToArray();
-            var now = TimeHelper.GetTimeStamp();
-            foreach (var item in rr)
-            {
-                var findStr = new JObject { { "projId", projId }, { "proposalIndex", "" }, { "address", item.address } }.ToString();
-                var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-                if(queryRes.Count == 0)
-                {
-                    var newdata = new JObject {
-                        { "projId", projId},
-                        { "proposalIndex", ""},
-                        { "address", item.address},
-                        { "balance", item.balance},
-                        { "balanceTp", item.balance},
-                        { "type", item.type},
-                        { "blockNumber", blockNumber},
-                        { "time", now}
-                    }.ToString();
-                    mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                    continue;
-                }
-                //
-                var rItem = queryRes[0];
-                var balance = long.Parse(rItem["balance"].ToString());
-                var balanceTp = long.Parse(rItem["balanceTp"].ToString());
-                if (tempNotClearAllFlag) balance = 0;
-                balance += item.balance - balanceTp;
-                balanceTp = item.balance;
-                var updateStr = new JObject { {"$set", new JObject {
-                    { "balance", balance},
-                    { "balanceTp", balanceTp},
-                    { "blockNumber", blockNumber},
-                     { "time", now}
-                } } }.ToString();
-                mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-            }
-        }
-        private void handleRagequit(JToken[] jtArr, string projId)
-        {
-            var rr = 
-            jtArr.Select(p => new { address = p["memberAddress"].ToString(), sharesToBurn = (-1)*long.Parse(p["sharesToBurn"].ToString()) }).ToArray();
-            foreach (var item in rr)
-            {
-                var findStr = new JObject { { "projId", projId }, { "address", item.address } }.ToString();
-                var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-                if (queryRes.Count == 0) continue;
-
-                var rItem = queryRes[0];
-                var balance = long.Parse(rItem["balance"].ToString());
-                var balanceTp = long.Parse(rItem["balanceTp"].ToString());
-                if (tempNotClearAllFlag) balance = 0;
-                balance += item.sharesToBurn - balanceTp;
-                balanceTp = item.sharesToBurn;
-                var updateStr = new JObject { { "$set", new JObject { { "balance", balance},{ "balanceTp", balanceTp} } } }.ToString();
-                mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-            }
-        }
         private void handleBalance(JToken[] jtArr, string projId, long blockNumber)
         {
             //
@@ -573,7 +505,6 @@ namespace NEL_FutureDao_BT.task
                 mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
             }
         }
-        private bool tempNotClearAllFlag = true;
         private void clearTempRes(JArray queryRes, string projId)
         {
             tempNotClearAllFlag = false;
@@ -618,7 +549,7 @@ namespace NEL_FutureDao_BT.task
                 tempNotClearAllFlag = true;
             }
         }
-
+        private bool tempNotClearAllFlag = true;
 
         // 票数统计
         private Dictionary<string, long> getCurrentVoteCount(string projId, string proposalIndex)
@@ -751,15 +682,7 @@ namespace NEL_FutureDao_BT.task
 
             return queryRes.ToDictionary(k => k["counter"].ToString(), v => (long)v["lastUpdateTime"]);
         }
-        private Dictionary<string, long> getProjBlockNumber(string[] projIdArr)
-        {
-            var findStr = MongoFieldHelper.toFilter(projIdArr, "counter").ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjCounter, findStr);
-            if (queryRes.Count == 0) return new Dictionary<string, long>();
-
-
-            return queryRes.ToDictionary(k => k["counter"].ToString(), v => (long)v["lastBlockIndex"]);
-        }
+        
 
         private void log(string key, long lh, long rh)
         {

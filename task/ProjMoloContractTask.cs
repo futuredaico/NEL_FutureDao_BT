@@ -40,7 +40,7 @@ namespace NEL_FutureDao_BT.task
         {
             Sleep(2000);
 
-            var rh = GetR();
+            var rh = GetR("transaction",out long rt);
             var lh = GetL();
             if (lh >= rh)
             {
@@ -89,6 +89,15 @@ namespace NEL_FutureDao_BT.task
                 UpdateL(index, blockTime, hashDict.Values.Distinct().ToArray());
                 Log(index, rh);
             }
+            //
+            updateCounter(rh, rt);
+        }
+
+        private void updateCounter(long index, long time)
+        {
+            var findStr = "{}";
+            var updateStr = new JObject { { "$set", new JObject { { "lastBlockIndex", index }, { "lastBlockTime", time } } } }.ToString();
+            mh.UpdateDataMany(lConn.connStr, lConn.connDB, notifyCounter, updateStr, findStr);
         }
 
         private void UpdateL(long index, long time, string[] hashArr)
@@ -442,16 +451,20 @@ namespace NEL_FutureDao_BT.task
         }
         private long GetL(string key="logs")
         {
+            
             var findStr = new JObject { { "counter", key } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCounter, findStr);
             if (queryRes.Count == 0) return -1;
             return long.Parse(queryRes[0]["lastBlockIndex"].ToString());
         }
-        private long GetR(string key="transaction")
+        //private long GetR(string key="transaction")
+        private long GetR(string key, out long time)
         {
+            time = -1;
             var findStr = new JObject { { "counter", key } }.ToString();
             var queryRes = mh.GetData(rConn.connStr, rConn.connDB, eventLogsCounter, findStr);
             if (queryRes.Count == 0) return -1;
+            time = long.Parse(queryRes[0]["timestamp"].ToString());
             return long.Parse(queryRes[0]["lastUpdateIndex"].ToString());
         }
     }

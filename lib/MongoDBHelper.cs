@@ -136,6 +136,15 @@ namespace NEL.NNS.lib
 
             client = null;
         }
+        public void UpdateDataMany(string mongodbConnStr, string mongodbDatabase, string coll, string updateStr, string whereStr)
+        {
+            var client = new MongoClient(mongodbConnStr);
+            var database = client.GetDatabase(mongodbDatabase);
+            var collection = database.GetCollection<BsonDocument>(coll);
+            collection.UpdateMany(BsonDocument.Parse(whereStr), BsonDocument.Parse(updateStr));
+
+            client = null;
+        }
         public void UpdateDecimal(string mongodbConnStr, string mongodbDatabase, string coll, BsonDocument updateBson, string whereStr)
         {
             var client = new MongoClient(mongodbConnStr);
