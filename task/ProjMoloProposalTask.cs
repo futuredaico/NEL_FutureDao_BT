@@ -1480,7 +1480,7 @@ namespace NEL_FutureDao_BT.task
             if (queryRes.Count == 0) return 0;
 
             var item = queryRes[0];
-            rt = long.Parse(item["lastUpdateTime"].ToString());
+            rt = long.Parse(item["lastBlockTime"].ToString());
             return long.Parse(item["lastBlockIndex"].ToString());
         }
         private Dictionary<string, long> getAllCounter()
