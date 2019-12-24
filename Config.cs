@@ -51,7 +51,7 @@ namespace NEL_FutureDao_BT
             };
         }
 
-        public string getNetType()
+        public static string getNetType()
         {
             return config["startNetType"].ToString();
         }

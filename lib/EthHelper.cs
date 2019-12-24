@@ -9,8 +9,8 @@ namespace NEL_FutureDao_BT.lib
 {
     class EthHelper
     {
-        //static string apiUrl = "https://node3.web3api.com";
-        static string apiUrl = "https://ropsten.infura.io/v3/638c755c81fe495e85debe581520b373";
+        static string apiUrl_mainnet = "https://node3.web3api.com";
+        static string apiUrl_testnet = "https://ropsten.infura.io/v3/638c755c81fe495e85debe581520b373";
         static int preLen = 64*13 + 2;
         static string ethSplit(string ss)
         {
@@ -38,7 +38,7 @@ namespace NEL_FutureDao_BT.lib
             return "0x3b214a74" + long.Parse(proposalIndex).ToString("x64");
 
         }
-        public static string ethCall(string contractHash, string proposalIndex)
+        public static string ethCall(string contractHash, string proposalIndex, string type="mainnet")
         {
             proposalIndex = fillIndex(proposalIndex);
             var postJo = new JObject {
@@ -49,6 +49,7 @@ namespace NEL_FutureDao_BT.lib
                 },
                 { "id", 2 },
             };
+            var apiUrl = type == "mainnet" ? apiUrl_mainnet : apiUrl_testnet;
             var res = HttpHelper.HttpPost(apiUrl, Encoding.UTF8.GetBytes(postJo.ToString()));
             Console.WriteLine(res);
             //
