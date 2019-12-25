@@ -1230,12 +1230,6 @@ namespace NEL_FutureDao_BT.task
             //
             r0.AddRange(r1);
             r0.AddRange(r2);
-            if(r0.Any(p => p["address"].ToString() == "0x239498540a9508c0ff9271d2d4ffe88ab73361e3"))
-            {
-                var c1 = r0.Where(p => p["address"].ToString() == "0x239498540a9508c0ff9271d2d4ffe88ab73361e3").ToArray()[0];
-                Console.WriteLine(c1.ToString());
-                Console.WriteLine(c1.ToString());
-            }
             var rr = r0.GroupBy(p => p["address"].ToString(), (k, g) =>
             {
                 return new
@@ -1370,10 +1364,26 @@ namespace NEL_FutureDao_BT.task
         {
             foreach(var item in jtArr)
             {
+                var didPass = getProposalState(item["didPass"].ToString());
+                if(didPass == ProposalState.PassYes)
+                {
+                    // 受益人收到股份, 自动退回权限
+                    resetDelegateKey(item["applicant"].ToString());
+                }
                 var findStr = new JObject { { "projId", projId }, { "proposalIndex", item["proposalIndex"] } }.ToString();
                 var updateStr = new JObject { { "$set", new JObject { { "proposalState", getProposalState(item["didPass"].ToString()) }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
                 mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
             }
+        }
+        private void resetDelegateKey(string delegateKey)
+        {
+            var findStr = new JObject { { "newDelegateKey", delegateKey } }.ToString();
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr) == 0) return;
+            //
+            var updateStr = new JObject { { "$set", new JObject {
+                { "newDelegateKey", ""}
+            } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
         }
         private void hanldeAbort(JToken[] jtArr, string projId)
         {
