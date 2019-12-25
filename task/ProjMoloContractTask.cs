@@ -63,20 +63,25 @@ namespace NEL_FutureDao_BT.task
                 }
                 var blockTime = long.Parse(queryRes[0]["timestamp"].ToString());
 
-                var hashArr = queryRes.Select(p => p["contractHash"].ToString()).Distinct().ToArray();
+                var res = queryRes.Select(p => {
+                    p["contractHash"] = p["contractHash"].ToString().ToLower();
+                    return p;
+                });
+                var hashArr = res.Select(p => p["contractHash"].ToString()).Distinct().ToArray();
                 var hashDict = getProjId(hashArr, out Dictionary<string, string> hashTypeDict, out Dictionary<string, long> hashDecimalsDict);
                 if (hashDict.Count == 0) continue;
                 if (hashTypeDict.Count > 0)
                 {
                     processNewContract(index, hashTypeDict, hashDecimalsDict);
                 }
-                var res = queryRes.Where(p => hashDict.ContainsKey(p["contractHash"].ToString().ToLower())).ToArray();
+                res = res.Where(p => hashDict.ContainsKey(p["contractHash"].ToString())).ToArray();
                 if (res.Count() == 0) continue;
-                res = queryRes.Select(p => dataFormat(p, hashDecimalsDict.GetValueOrDefault(p["contractHash"].ToString()))).ToArray();
+                
+                res = res.Select(p => dataFormat(p, hashDecimalsDict.GetValueOrDefault(p["contractHash"].ToString()))).ToArray();
                 foreach (var item in res)
                 {
                     if (item == null) continue;
-                    item["contractHash"] = item["contractHash"].ToString().ToLower();
+                    item["contractHash"] = item["contractHash"].ToString();
                     findStr = new JObject { { "transactionHash", item["transactionHash"] }, { "event", item["event"] } }.ToString();
                     if (mh.GetDataCount(lConn.connStr, lConn.connDB, notifyCol, findStr) == 0)
                     {
@@ -1125,7 +1130,7 @@ namespace NEL_FutureDao_BT.task
             }
             data.Add("blockNumber", jt["blockNumber"]);
             data.Add("transactionHash", jt["transactionHash"]);
-            data.Add("contractHash", jt["contractHash"]);
+            data.Add("contractHash", jt["contractHash"].ToString());
             data.Add("address", jt["address"]);
             data.Add("event", eventName);
             
