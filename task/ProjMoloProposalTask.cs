@@ -1119,7 +1119,7 @@ namespace NEL_FutureDao_BT.task
                         { "proposalName", proposalName},
                         { "proposalDetail", proposalDetail},
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        { "tokenTribute", long.Parse(jt["tokenTribute"].ToString())},
+                        { "tokenTribute", jt["tokenTribute"].ToString()},
                         { "proposalState", ProposalState.Voting},
                         { "handleState", ProposalHandleState.Not},
                         { "voteYesCount", 0},
