@@ -1141,7 +1141,7 @@ namespace NEL_FutureDao_BT.task
             var div = BigInteger.One;
             if (fundDecimals > 0)
             {
-                if(name == "tokenTribute" || name == "amount")
+                if (name == "tokenTribute" || name == "amount")
                 {
                     div = new BigInteger(Math.Pow(10, fundDecimals));
                 }
@@ -1154,7 +1154,10 @@ namespace NEL_FutureDao_BT.task
             }
             if(type == "uint256")
             {
-                return (new BigInteger(val.Substring(2).HexString2Bytes().Reverse().ToArray())/div).ToString();
+                var num = new BigInteger(val.Substring(2).HexString2Bytes().Reverse().ToArray());
+                var res = decimal.Parse(num.ToString())/decimal.Parse(div.ToString());
+                return res.ToString();
+                //return (new BigInteger(val.Substring(2).HexString2Bytes().Reverse().ToArray())/div).ToString();
             }
             if(type ==  "uint8")
             {
