@@ -1182,7 +1182,7 @@ namespace NEL_FutureDao_BT.task
             }
             //
             newProjIdDict = 
-                queryRes.Where(p => p["type"].ToString() != MoloType.Init)
+                queryRes.Where(p => p["type"].ToString() == MoloType.Add)
                 .ToDictionary(k => k["contractHash"].ToString().ToLower(), v => v["projId"].ToString());
             //
             hashDecimalsDict =
@@ -1305,7 +1305,8 @@ namespace NEL_FutureDao_BT.task
 
     class MoloType
     {
-        public const string Init = "0";
-        public const string Add = "1";
+        public const string Init = "0"; // 合约已追完
+        public const string Add = "1";  // 合约开始追
+        public const string LogsNotReady = "2";  // logs 还未准备好
     }
 }
