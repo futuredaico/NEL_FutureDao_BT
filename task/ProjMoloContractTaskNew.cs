@@ -121,7 +121,7 @@ namespace NEL_FutureDao_BT.task
         //
         private void UpdateLNew(long index, long time, string[] projIdArr)
         {
-            UpdateL(index, time, StageType.Normal);
+            UpdateL(index, time, "logs", StageType.Normal);
             UpdateLProj(index, time, projIdArr);
         }
         private void UpdateLProj(long index, long time, string[] projIdArr)

@@ -221,7 +221,7 @@ namespace NEL_FutureDao_BT.task
                     }
                     var time = item.time;
                     UpdateLNew(index, time, projIdArr);
-                    log(name(), index, rh);
+                    Log(index, rh);
                     foreach (var subItem in pRes)
                     {
                         clearTempRes(subItem.projId);
@@ -652,6 +652,25 @@ namespace NEL_FutureDao_BT.task
                 tempNotClearAllFlag = true;
             }
         }
+        private void clearTempRes2(string projId)
+        {
+            // 清除临时字段数据
+            tempNotClearAllFlag2 = false;
+            try
+            {
+                var findStr = new JObject { { "projId", projId }, { "balanceTp", new JObject { { "$ne", 0 } } } }.ToString();
+                var updateStr = new JObject { { "$set", new JObject { { "balanceTp", 0 } } } }.ToString();
+                mh.UpdateDataMany(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+            }
+            catch (Exception ex)
+            {
+                // 
+                Console.WriteLine(ex);
+                tempNotClearAllFlag2 = true;
+            }
+        }
+        private bool tempNotClearAllFlag = true;
+        private bool tempNotClearAllFlag2 = true;
         private void clearTempRes(JToken[] jtArr, string projId)
         {
             tempNotClearAllFlag = false;
@@ -696,7 +715,7 @@ namespace NEL_FutureDao_BT.task
                 tempNotClearAllFlag = true;
             }
         }
-        private bool tempNotClearAllFlag = true;
+        
 
         // 项目持币人数和总股份
         private long getHasTokenCount(string projId, out long tokenTotal)
@@ -979,6 +998,7 @@ namespace NEL_FutureDao_BT.task
             handleHasTokenCount(r6, projId);
             //
             updateL(projId, index, time);
+            clearTempRes(projId);
         }
         private void updateType(string projId, string type)
         {
