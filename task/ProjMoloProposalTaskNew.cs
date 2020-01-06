@@ -38,7 +38,7 @@ namespace NEL_FutureDao_BT.task
                 votingPeriod = 120 * 5; // tmp
                 notingPeriod = 120 * 5;
             }
-            addPrefix();
+            //addPrefix();
             initIndex();
             // 追赶线程
             System.Threading.Tasks.Task.Run(SyncTask);

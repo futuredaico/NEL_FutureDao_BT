@@ -27,8 +27,7 @@ namespace NEL_FutureDao_BT.task
             rConn = Config.remoteDbConnInfo;
             lConn = Config.localDbConnInfo;
 
-            addPrefix();
-
+            //addPrefix();
             initIndex();
 
             // 追赶线程
@@ -45,6 +44,8 @@ namespace NEL_FutureDao_BT.task
         {
             mh.setIndex(lConn.connStr, lConn.connDB, notifyCol, "{'blockNumber':1,'event':1}", "i_blockNumber_event");
             mh.setIndex(lConn.connStr, lConn.connDB, notifyCol, "{'transactionHash':1,'event':1}", "i_transactionHash_event");
+            mh.setIndex(lConn.connStr, lConn.connDB, notifyCol, "{'blockNumber':1,'projId':1}", "i_blockNumber_projId");
+            mh.setIndex(lConn.connStr, lConn.connDB, notifyCol, "{'projId':1,'event':1}", "i_projId_event");
         }
 
         public override void process()
