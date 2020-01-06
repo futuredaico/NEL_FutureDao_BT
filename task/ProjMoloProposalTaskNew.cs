@@ -41,11 +41,11 @@ namespace NEL_FutureDao_BT.task
             addPrefix();
             initIndex();
             // 追赶线程
-            //System.Threading.Tasks.Task.Run(SyncTask);
+            System.Threading.Tasks.Task.Run(SyncTask);
         }
         private void addPrefix()
         {
-            var prefix = "zbak11_";
+            var prefix = "zbak10_";
             notifyCounter = prefix + notifyCounter;
             notifyCol = prefix + notifyCol;
             projHashCol = prefix + projHashCol;
@@ -153,6 +153,10 @@ namespace NEL_FutureDao_BT.task
 
         private void processNew()
         {
+            //
+            handleHasSyncFinish();
+
+            //
             var findStr = new JObject { { "stage", StageType.Normal } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCounter, findStr);
             if (queryRes.Count == 0) return;
@@ -537,48 +541,6 @@ namespace NEL_FutureDao_BT.task
             }
         }
 
-        // 项目持币人数和总股份
-        private long getHasTokenCount(string projId, out long tokenTotal)
-        {
-            var findJo = new JObject {
-                { "projId", projId },
-                { "proposalIndex", "" },
-                { "balance", new JObject{ { "$gt", 0} } }
-            };
-            var findStr = findJo.ToString();
-            var hasTokenCount = mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-            tokenTotal = getTokenTotal(findJo);
-            return hasTokenCount;
-        }
-        private long getTokenTotal(JObject findJo)
-        {
-            var match = new JObject { { "$match", findJo } }.ToString();
-            var group = new JObject { { "$group", new JObject { { "_id", null }, { "sum", new JObject { { "$sum", "$balance" } } } } } }.ToString();
-            var list = new List<string> { match, group };
-            var queryRes = mh.Aggregate(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, list);
-            return long.Parse(queryRes[0]["sum"].ToString());
-        }
-        private void handleHasTokenCount(JToken[] jtArr, string projId)
-        {
-            if (jtArr.Any(p => {
-                var eventName = p["event"].ToString();
-                if (eventName == "SummonComplete") return true;
-                if (eventName == "ProcessProposal" && p["didPass"].ToString() == "1") return true;
-                if (eventName == "Ragequit") return true;
-                return false;
-            }))
-            {
-                var hasTokenCount = getHasTokenCount(projId, out long tokenTotal);
-                var findStr = new JObject { { "projId", projId } }.ToString();
-                var updateJo = new JObject { { "hasTokenCount", hasTokenCount } };
-                var updateStr = new JObject { { "$set", new JObject {
-                    { "hasTokenCount", hasTokenCount },
-                    { "tokenTotal", tokenTotal }
-                } } }.ToString();
-                mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
-            }
-        }
-
         // 余额
         private void handleBalance(JToken[] jtArr, string projId, long blockNumber)
         {
@@ -736,6 +698,70 @@ namespace NEL_FutureDao_BT.task
         }
         private bool tempNotClearAllFlag = true;
 
+        // 项目持币人数和总股份
+        private long getHasTokenCount(string projId, out long tokenTotal)
+        {
+            var findJo = new JObject {
+                { "projId", projId },
+                { "proposalIndex", "" },
+                { "balance", new JObject{ { "$gt", 0} } }
+            };
+            var findStr = findJo.ToString();
+            var hasTokenCount = mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+            tokenTotal = getTokenTotal(findJo);
+            return hasTokenCount;
+        }
+        private long getTokenTotal(JObject findJo)
+        {
+            var match = new JObject { { "$match", findJo } }.ToString();
+            var group = new JObject { { "$group", new JObject { { "_id", null }, { "sum", new JObject { { "$sum", "$balance" } } } } } }.ToString();
+            var list = new List<string> { match, group };
+            var queryRes = mh.Aggregate(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, list);
+            return long.Parse(queryRes[0]["sum"].ToString());
+        }
+        private void handleHasTokenCount(JToken[] jtArr, string projId)
+        {
+            if (jtArr.Any(p => {
+                var eventName = p["event"].ToString();
+                if (eventName == "SummonComplete") return true;
+                if (eventName == "ProcessProposal" && p["didPass"].ToString() == "1") return true;
+                if (eventName == "Ragequit") return true;
+                return false;
+            }))
+            {
+                var hasTokenCount = getHasTokenCount(projId, out long tokenTotal);
+                var findStr = new JObject { { "projId", projId } }.ToString();
+                var updateJo = new JObject { { "hasTokenCount", hasTokenCount } };
+                var updateStr = new JObject { { "$set", new JObject {
+                    { "hasTokenCount", hasTokenCount },
+                    { "tokenTotal", tokenTotal }
+                } } }.ToString();
+                mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
+            }
+        }
+
+        // 项目资金数量
+        private void handleFundTotal(JToken[] jtArr, string projId)
+        {
+            var res = jtArr.Sum(p =>
+            {
+                var eventName = p["event"].ToString();
+                if (eventName == "ProcessProposal")
+                {
+                    return decimal.Parse(p["tokenTribute"].ToString());
+                }
+                if (eventName == "Withdrawal")
+                {
+                    return -1 * decimal.Parse(p["amount"].ToString());
+                }
+                return 0;
+            });
+            if(res > 0)
+            {
+
+            }
+        }
+
 
         // 状态变动
         private void handleProposalState()
@@ -836,8 +862,13 @@ namespace NEL_FutureDao_BT.task
                 var projId = info.Key;
                 var lastBlockIndex = info.Value;
                 SyncTaskLoop(projId, lastBlockIndex);
-                //updateType(projId, StageType.Finished);
+                var logsH = getLh();
+                if(lastBlockIndex >= logsH)
+                {
+                    updateType(projId, StageType.Finished);
+                }
             }
+            
         }
         private void SyncTaskLoop(string projId, long rh)
         {
@@ -906,14 +937,14 @@ namespace NEL_FutureDao_BT.task
         private void handleOne(JToken[] queryRes, long index, string projId)
         {
             var time = long.Parse(queryRes[0]["blockTime"].ToString());
-            // 0.委托
+            // 0.项目时间
             var r0 =
-            queryRes.Where(p => p["event"].ToString() == "UpdateDelegateKey").ToArray();
-            handleDelegateKey(r0, projId);
-            // 1.项目时间
-            var r1 =
             queryRes.Where(p => p["event"].ToString() == "SummonComplete").ToArray();
-            handleSummonComplete(r1, projId);
+            handleSummonComplete(r0, projId);
+            // 1.委托
+            var r1 =
+            queryRes.Where(p => p["event"].ToString() == "UpdateDelegateKey").ToArray();
+            handleDelegateKey(r1, projId);
 
             // 2.提案
             var r2 =
@@ -924,28 +955,30 @@ namespace NEL_FutureDao_BT.task
             var r3 =
             queryRes.Where(p => p["event"].ToString() == "SubmitVote").ToArray();
             handleSubmitVote(r3, projId, index);
-            // 4.余额
-            var r4 =
-            queryRes.ToArray();//.Where(p => p["event"].ToString() == "ProcessProposal").ToArray();
-            handleBalance(r4, projId, index);
 
-            // 5.票数统计
+            // 4.提案处理结果(待处理和终止)
+            var r4 =
+            queryRes.Where(p => p["event"].ToString() == "ProcessProposal").ToArray();
+            handleProcessProposalResult(r4, projId);
+            r4 =
+            queryRes.Where(p => p["event"].ToString() == "Abort").ToArray();
+            hanldeAbort(r4, projId);
+
+            // 5.提案票数
             var r5 =
             queryRes.Where(p => p["event"].ToString() == "SubmitVote").ToArray();
             handleSubmitVoteCount(r5, projId);
 
-            // 6.提案状态和提案处理结果
+            // 6.项目成员数和股份数
             var r6 =
-            queryRes.Where(p => p["event"].ToString() == "ProcessProposal").ToArray();
-            handleProcessProposalResult(r6, projId);
-            r6 =
-            queryRes.Where(p => p["event"].ToString() == "Abort").ToArray();
-            hanldeAbort(r6, projId);
+            queryRes.ToArray();
+
+            // 7.余额
+            handleBalance(r6, projId, index);
+
+            handleHasTokenCount(r6, projId);
             //
             updateL(projId, index, time);
-            //log("moloProposalTask", index, rh);
-            //
-            //clearTempRes(new JArray { queryRes }, projId);
         }
         private void updateType(string projId, string type)
         {
@@ -955,10 +988,10 @@ namespace NEL_FutureDao_BT.task
         }
         class StageType
         {
-            public const string Normal = "";
+            public const string Normal = "0";
             public const string Waiting = "1";
-            public const string Handling = "2";
-            public const string Finished = "3";
+            public const string Handling = "5";
+            public const string Finished = "6";
         }
 
         //
@@ -968,12 +1001,51 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCounter, findStr);
             if (queryRes.Count == 0) return;
 
+            var logsH = getLh();
             foreach (var item in queryRes)
             {
                 var projId = item["counter"].ToString();
-
+                var lastBlockIndex = getLh(projId);
+                if(lastBlockIndex == logsH)
+                {
+                    updateType(projId, StageType.Normal);
+                    continue;
+                }
+                var rh = logsH;
+                var batchSize = 500;
+                handleHasSyncFinish(logsH, lastBlockIndex, batchSize, projId);
+                updateType(projId, StageType.Normal);
             }
 
+        }
+        private void handleHasSyncFinish(long rh, long lh, long batchSize, string projId)
+        {
+            var isNeedUpdateRh = false;
+            for (var startIndex = lh; startIndex <= rh; startIndex += batchSize)
+            {
+                var nextIndex = startIndex + batchSize;
+                if (nextIndex > rh) nextIndex = rh;
+
+                var findStr = new JObject {
+                    { "blockNumber", new JObject { { "$gt", startIndex }, { "$lte", nextIndex } } },
+                    { "projId", projId}
+                }.ToString();
+                var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCol, findStr);
+                if (queryRes.Count == 0)
+                {
+                    isNeedUpdateRh = true;
+                    continue;
+                }
+
+                handle(queryRes, projId);
+                log(projId, nextIndex, rh);
+                isNeedUpdateRh = false;
+            }
+            if (isNeedUpdateRh)
+            {
+                updateL(projId, rh, 0);
+                log(projId, rh, rh);
+            }
         }
 
 
@@ -996,7 +1068,7 @@ namespace NEL_FutureDao_BT.task
             var updateStr = new JObject { { "$set", updateJo } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjCounter, updateStr, findStr);
         }
-        private long getLh(string projId)
+        private long getLh(string projId="logs")
         {
             var findStr = new JObject { { "counter", projId } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjCounter, findStr);

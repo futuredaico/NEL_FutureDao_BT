@@ -36,7 +36,7 @@ namespace NEL_FutureDao_BT.task
         }
         private void addPrefix()
         {
-            var prefix = "zbak11_";
+            var prefix = "zbak10_";
             notifyCounter = prefix + notifyCounter;
             notifyCol = prefix + notifyCol;
             projHashCol = prefix + projHashCol;
@@ -121,14 +121,14 @@ namespace NEL_FutureDao_BT.task
         //
         private void UpdateLNew(long index, long time, string[] projIdArr)
         {
-            UpdateL(index, time);
+            UpdateL(index, time, StageType.Normal);
             UpdateLProj(index, time, projIdArr);
         }
         private void UpdateLProj(long index, long time, string[] projIdArr)
         {
             foreach (var projId in projIdArr)
             {
-                UpdateL(index, time, projId);
+                UpdateL(index, time, projId, StageType.Normal);
             }
         }
 
@@ -375,8 +375,8 @@ namespace NEL_FutureDao_BT.task
         {
             public const string Normal = "0";
             public const string Waiting = "1";
-            public const string Handling = "2";
-            public const string Finished = "3";
+            public const string Handling = "5";
+            public const string Finished = "6";
         }
 
 
