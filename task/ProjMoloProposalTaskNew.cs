@@ -179,16 +179,25 @@ namespace NEL_FutureDao_BT.task
         }
         private void processNew(long rh, long lh, string[] projIdArr)
         {
+            var isNeedUpdateTime = false;
             var batchSize = 500;
             for (var startIndex = lh; startIndex <= rh; startIndex += batchSize)
             {
                 var nextIndex = startIndex + batchSize;
                 var findStr = new JObject { { "blockNumber", new JObject { { "$gt", startIndex }, { "$lte", nextIndex } } } }.ToString();
                 var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCol, findStr);
-                if (queryRes.Count == 0) continue;
+                if (queryRes.Count == 0)
+                {
+                    isNeedUpdateTime = true;
+                    continue;
+                }
 
                 var res = queryRes.Where(p => projIdArr.Contains(p["projId"].ToString()));
-                if (res.Count() == 0) continue;
+                if (res.Count() == 0)
+                {
+                    isNeedUpdateTime = true;
+                    continue;
+                }
 
                 //
                 var iRes =
@@ -226,7 +235,14 @@ namespace NEL_FutureDao_BT.task
                     {
                         clearTempRes(subItem.projId);
                     }
+
                 }
+                isNeedUpdateTime = false;
+            }
+            if(isNeedUpdateTime)
+            {
+                UpdateLNew(rh, 0, projIdArr);
+                Log(rh, rh);
             }
         }
         private void UpdateLNew(long index, long time, string[] projIdArr)
