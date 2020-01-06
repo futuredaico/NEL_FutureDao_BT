@@ -16,7 +16,7 @@ namespace NEL_FutureDao_BT.task
         private string notifyCol = "molonotifyinfos";
         private string moloProjCounter = "molocounters";
         private string moloProjProposalInfoCol = "moloproposalinfos";
-        private string moloProjProposalNameInfoCol = "moloproposalnames";
+        private string moloProjProposalNameInfoCol = "moloproposalnameinfos";
         private string moloProjBalanceInfoCol = "moloprojbalanceinfos";
         private string projHashCol = "moloprojhashinfos";
         private string projInfoCol = "moloprojinfos";
@@ -45,7 +45,7 @@ namespace NEL_FutureDao_BT.task
         }
         private void addPrefix()
         {
-            var prefix = "zbak10_";
+            var prefix = "zbak11_";
             notifyCounter = prefix + notifyCounter;
             notifyCol = prefix + notifyCol;
             projHashCol = prefix + projHashCol;
@@ -216,8 +216,8 @@ namespace NEL_FutureDao_BT.task
                         processOne(index, subItem.projId, subItem.infos);
                     }
                     var time = item.time;
-                    var ids = pRes.Select(p => p.projId).ToArray();
-                    UpdateLNew(index, time, ids);
+                    UpdateLNew(index, time, projIdArr);
+                    log(name(), index, rh);
                     foreach (var subItem in pRes)
                     {
                         clearTempRes(subItem.projId);
@@ -276,14 +276,15 @@ namespace NEL_FutureDao_BT.task
             // 6.项目成员数和股份数
             var r6 =
             queryRes.ToArray();
-            handleHasTokenCount(r6, projId);
 
             // 7.余额
             handleBalance(r6, projId, index);
+
+            handleHasTokenCount(r6, projId);
             //
             updateL(projId, index, time);
             //
-            clearTempRes(queryRes, projId);
+            //clearTempRes(queryRes, projId);
         }
 
         // 创建时间 + 委托
@@ -552,9 +553,10 @@ namespace NEL_FutureDao_BT.task
         private long getTokenTotal(JObject findJo)
         {
             var match = new JObject { { "$match", findJo } }.ToString();
-            var group = new JObject { { "$group", new JObject { { "_id", "$type" }, { "sum", new JObject { { "$sum", "$balance" } } } } } }.ToString();
+            var group = new JObject { { "$group", new JObject { { "_id", null }, { "sum", new JObject { { "$sum", "$balance" } } } } } }.ToString();
             var list = new List<string> { match, group };
-            return mh.AggregateCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, list);
+            var queryRes = mh.Aggregate(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, list);
+            return long.Parse(queryRes[0]["sum"].ToString());
         }
         private void handleHasTokenCount(JToken[] jtArr, string projId)
         {
