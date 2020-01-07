@@ -163,10 +163,12 @@ namespace NEL_FutureDao_BT.task
             //
             var projIdArr = queryRes.Select(p => p["counter"].ToString()).Where(p => p != "logs").ToArray();
             var rh = 0L;
+            var rt = 0L;
             if (queryRes.Any(p => p["counter"].ToString() == "logs"))
             {
                 var item = queryRes.Where(p => p["counter"].ToString() == "logs").ToArray()[0];
                 rh = long.Parse(item["lastBlockIndex"].ToString());
+                rt = long.Parse(item["lastBlockTime"].ToString());
             }
 
             var lh = getLh("logs");
@@ -175,9 +177,9 @@ namespace NEL_FutureDao_BT.task
             {
                 return;
             }
-            processNew(rh, lh, projIdArr);
+            processNew(rh, lh, rt, projIdArr);
         }
-        private void processNew(long rh, long lh, string[] projIdArr)
+        private void processNew(long rh, long lh, long rt, string[] projIdArr)
         {
             var isNeedUpdateTime = false;
             var batchSize = 500;
@@ -241,7 +243,7 @@ namespace NEL_FutureDao_BT.task
             }
             if(isNeedUpdateTime)
             {
-                UpdateLNew(rh, 0, projIdArr);
+                UpdateLNew(rh, rt, projIdArr);
                 Log(rh, rh);
             }
         }
