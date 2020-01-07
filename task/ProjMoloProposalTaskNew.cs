@@ -302,7 +302,7 @@ namespace NEL_FutureDao_BT.task
             // 7.余额
             handleBalance(r6, projId, index);
 
-            handleHasTokenCount(r6, projId);
+            //handleHasTokenCount(r6, projId);
             //
             updateL(projId, index, time);
             //
@@ -754,6 +754,8 @@ namespace NEL_FutureDao_BT.task
             var group = new JObject { { "$group", new JObject { { "_id", null }, { "sum", new JObject { { "$sum", "$balance" } } } } } }.ToString();
             var list = new List<string> { match, group };
             var queryRes = mh.Aggregate(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, list);
+            if (queryRes.Count == 0) return 0;
+
             return long.Parse(queryRes[0]["sum"].ToString());
         }
         private void handleHasTokenCount(JToken[] jtArr, string projId)
