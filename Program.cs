@@ -21,8 +21,8 @@ namespace NEL_FutureDao_BT
             //AddTask(new ProjProposalTask("ProjProposalTask"));
             AddTask(new ProjOrderTask("ProjOrderTask"));
             */
-            AddTask(new ProjMoloContractTask("ProjMoloContractTask"));
-            AddTask(new ProjMoloProposalTask("ProjMoloProposalTask"));
+            AddTask(new ProjMoloContractTaskNewV2Stream("ProjMoloContractTaskNewV2Stream"));
+            AddTask(new ProjMoloProposalTaskNewV2Stream("ProjMoloProposalTaskNewV2Stream"));
             AddTask(new ProjMoloDiscussTask("ProjMoloDiscussTask"));
 
         }
