@@ -31,7 +31,7 @@ namespace NEL_FutureDao_BT.task
             rConn = Config.remoteDbConnInfo;
             lConn = Config.localDbConnInfo;
 
-            //addPrefix();
+            addPrefix();
             initIndex();
         }
 
@@ -223,6 +223,7 @@ namespace NEL_FutureDao_BT.task
                 newdata["value"] = formatValue(value, fundInfo.decimals);
                 newdata["valueDecimals"] = fundInfo.decimals;
                 newdata["valueSymbol"] = fundInfo.symbol;
+                newdata["valueHash"] = fundHash;
                 return newdata;
             }
             if (topics == Topic.Approval.hash)
@@ -234,37 +235,41 @@ namespace NEL_FutureDao_BT.task
                 newdata["value"] = formatValue(value, fundInfo.decimals);
                 newdata["valueDecimals"] = fundInfo.decimals;
                 newdata["valueSymbol"] = fundInfo.symbol;
+                newdata["valueHash"] = fundHash;
                 return newdata;
             }
 
             if (topics == Topic.SubmitProposal.hash)
             {
                 var value = data["tokenTribute"].ToString();
-                var symbol = getFundSymbolByProjId(projId, out long decimals);
+                var symbol = getFundSymbolByProjId(projId, out long decimals, out string fundHash);
                 newdata["tokenTributeOrg"] = value;
                 newdata["tokenTribute"] = formatValue(value, decimals);
                 newdata["tokenTributeDecimals"] = decimals;
                 newdata["tokenTributeSymbol"] = symbol;
+                newdata["tokenTributeHash"] = fundHash;
                 return newdata;
             }
             if (topics == Topic.ProcessProposal.hash)
             {
                 var value = data["tokenTribute"].ToString();
-                var symbol = getFundSymbolByProjId(projId, out long decimals);
+                var symbol = getFundSymbolByProjId(projId, out long decimals, out string fundHash);
                 newdata["tokenTributeOrg"] = value;
                 newdata["tokenTribute"] = formatValue(value, decimals);
                 newdata["tokenTributeDecimals"] = decimals;
                 newdata["tokenTributeSymbol"] = symbol;
+                newdata["tokenTributeHash"] = fundHash;
                 return newdata;
             }
             if (topics == Topic.Withdrawal.hash)
             {
                 var value = data["amount"].ToString();
-                var symbol = getFundSymbolByProjId(projId, out long decimals);
+                var symbol = getFundSymbolByProjId(projId, out long decimals, out string fundHash);
                 newdata["amountOrg"] = value;
                 newdata["amount"] = formatValue(value, decimals);
                 newdata["amountDecimals"] = decimals;
                 newdata["amountSymbol"] = symbol;
+                newdata["amountHash"] = fundHash;
                 return newdata;
             }
             if (topics == Topic.SubmitProposal_v2.hash)
@@ -307,15 +312,17 @@ namespace NEL_FutureDao_BT.task
         }
 
         //
-        private string getFundSymbolByProjId(string projId, out long decimals)
+        private string getFundSymbolByProjId(string projId, out long decimals, out string fundHash)
         {
             decimals = 0L;
+            fundHash = "";
             var findStr = new JObject { { "projId", projId } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, projInfoCol, findStr);
             if (queryRes.Count == 0) return "";
 
             var item = queryRes[0];
             decimals = long.Parse(item["fundDecimals"].ToString());
+            fundHash = item["fundHash"].ToString();
             var symbol = item["fundSymbol"].ToString();
             return symbol;
         }

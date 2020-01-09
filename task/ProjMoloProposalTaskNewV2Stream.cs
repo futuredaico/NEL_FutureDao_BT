@@ -18,6 +18,7 @@ namespace NEL_FutureDao_BT.task
         private string moloProjProposalInfoCol = "moloproposalinfos";
         private string moloProjProposalNameInfoCol = "moloproposalnameinfos";
         private string moloProjBalanceInfoCol = "moloprojbalanceinfos";
+        private string moloProjFundInfoCol = "moloprojfundinfos";
         private string projHashCol = "moloprojhashinfos";
         private string projInfoCol = "moloprojinfos";
         private long votingPeriod = 17280 * 5 * 7;
@@ -37,7 +38,7 @@ namespace NEL_FutureDao_BT.task
                 votingPeriod = 120 * 5; // tmp
                 notingPeriod = 120 * 5;
             }
-            //addPrefix();
+            addPrefix();
             initIndex();
         }
 
@@ -48,8 +49,9 @@ namespace NEL_FutureDao_BT.task
             notifyCol = prefix + notifyCol;
             moloProjCounter = prefix + moloProjCounter;
             moloProjProposalInfoCol = prefix + moloProjProposalInfoCol;
-            moloProjProposalNameInfoCol = prefix + moloProjProposalNameInfoCol;
+            //moloProjProposalNameInfoCol = prefix + moloProjProposalNameInfoCol;
             moloProjBalanceInfoCol = prefix + moloProjBalanceInfoCol;
+            moloProjFundInfoCol = prefix + moloProjFundInfoCol;
             //projInfoCol = prefix + projInfoCol;
             //projHashCol = prefix + projHashCol;
         }
@@ -112,6 +114,9 @@ namespace NEL_FutureDao_BT.task
                 if (topics == Topic.CancelProposal_v2.hash) handleCancelProposalV2(item);
                 if (topics == Topic.Ragequit_v2.hash) handleRagequitV2(item);
 
+                // 股份总额 + 资产总额
+                handleShareAndFund(item);
+
                 updateL(counter, blockNumber, blockTime);
                 log(counter, blockNumber, blockTime);
                 if (topics == Topic.SummonComplete.hash
@@ -128,6 +133,182 @@ namespace NEL_FutureDao_BT.task
             }
         }
 
+        //
+        private void handleShareAndFund(JToken jt)
+        {
+            var topics = jt["topics"].ToString();
+            // 项目股份总额
+            // v1.0 + v2.0
+            if (topics == Topic.SummonComplete.hash
+                || (topics == Topic.ProcessProposal.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Ragequit.hash
+                || (topics == Topic.ProcessProposal_v2.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Ragequit_v2.hash
+                )
+            {
+                var projId = jt["projId"].ToString();
+                var tokenDict = getCurrentVoteCount(projId, "");
+                var tokenTotal = tokenDict.GetValueOrDefault(BalanceType.Balance);
+
+                var findStr = new JObject { { "projId", projId } }.ToString();
+                var updateStr = new JObject { { "$set", new JObject {
+                        { "tokenTotal", tokenTotal}
+                    } } }.ToString();
+                mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
+
+                // 总持有人数
+                handleHasTokenCount(projId);
+            }
+
+            // 项目资产总额
+            List<FundInfo> list = new List<FundInfo>();
+            if ((topics == Topic.ProcessProposal.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Withdrawal.hash
+                || (topics == Topic.ProcessProposal_v2.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Withdrawal_v2.hash
+                )
+            {
+                var projId = jt["projId"].ToString();
+                if(topics == Topic.ProcessProposal.hash)
+                {
+                    var tokenTribute = jt["tokenTribute"].ToString();
+                    var tokenTributeSymbol = jt["tokenTributeSymbol"].ToString();
+                    var tokenTributeHash = jt["tokenTributeHash"].ToString();
+                    list.Add(new FundInfo
+                    {
+                        projId = projId,
+                        amount = tokenTribute,
+                        symbol = tokenTributeSymbol,
+                        hash  = tokenTributeHash,
+                        sig = 1
+                    });
+                }
+                else if (topics == Topic.Withdrawal.hash)
+                {
+                    var amount = jt["amount"].ToString();
+                    var amountSymbol = jt["amountSymbol"].ToString();
+                    var amountHash = jt["amountHash"].ToString();
+                    list.Add(new FundInfo
+                    {
+                        amount = amount,
+                        symbol = amountSymbol,
+                        hash = amountHash,
+                        sig = 0
+                    });
+                }
+                else if(topics == Topic.ProcessProposal_v2.hash)
+                {
+                    var proposalIndex = jt["proposalIndex"].ToString();
+                    var findStr = new JObject {
+                        { "projId", projId },{ "proposalQueueIndex", proposalIndex }
+                    }.ToString();
+                    var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+                    if (queryRes.Count == 0) return;
+
+                    var tributeOffered = jt["tributeOffered"].ToString();
+                    var tributeTokenSymbol = jt["tributeTokenSymbol"].ToString();
+                    var tributeToken = jt["tributeToken"].ToString();
+                    list.Add(new FundInfo
+                    {
+                        amount = tributeOffered,
+                        symbol = tributeTokenSymbol,
+                        hash = tributeToken,
+                        sig = 1
+                    });
+                    var paymentRequested = jt["paymentRequested"].ToString();
+                    var paymentTokenSymbol = jt["paymentTokenSymbol"].ToString();
+                    var paymentToken = jt["paymentToken"].ToString();
+                    list.Add(new FundInfo
+                    {
+                        amount = paymentRequested,
+                        symbol = paymentTokenSymbol,
+                        hash = paymentToken,
+                        sig = 0
+                    });
+               
+                } else
+                {
+                    var amount = jt["amount"].ToString();
+                    var amountSymbol = jt["amountSymbol"].ToString();
+                    var tokenAddress = jt["tokenAddress"].ToString();
+                    list.Add(new FundInfo {
+                        amount = amount,
+                        symbol = amountSymbol,
+                        hash = tokenAddress,
+                        sig = 0
+                    });
+                }
+
+                var res = 
+                list.GroupBy(p => p.hash, (k, g) =>
+                {
+                    return new
+                    {
+                        h = k,
+                        s = g.ToArray()[0].symbol,
+                        m = g.Sum(gp =>
+                        {
+                            if (gp.sig == 1) return decimal.Parse(gp.amount);
+                            return decimal.Parse(gp.amount) * 1;
+                        })
+                    };
+                });
+                foreach(var item in res)
+                {
+                    var findStr = new JObject { { "projId", projId },{ "fundHash", item.h} }.ToString();
+                    var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjFundInfoCol, findStr);
+                    if(queryRes.Count == 0)
+                    {
+                        var newdata = new JObject {
+                            {"projId", projId },
+                            {"fundHash", item.h },
+                            {"fundSymbol", item.s },
+                            {"fundTotal", item.m },
+                            {"fundTotalTp", item.m },
+                        }.ToString();
+                        mh.PutData(lConn.connStr, lConn.connDB, moloProjFundInfoCol, newdata);
+                        continue;
+                    }
+                    var rItem = queryRes[0];
+                    var fundTotal = decimal.Parse(rItem["fundTotal"].ToString());
+                    var fundTotalTp = decimal.Parse(rItem["fundTotalTp"].ToString());
+                    if(tempNotClearAllFlag) fundTotalTp = 0;
+
+                    fundTotal += item.m - fundTotalTp;
+                    fundTotalTp = item.m;
+                    var updateStr = new JObject { { "$set", new JObject {
+                        { "fundTotal",fundTotal.ToString()},
+                        { "fundTotalTp",fundTotalTp.ToString()}
+                    } } }.ToString();
+                    mh.UpdateData(lConn.connStr, lConn.connDB, moloProjFundInfoCol, updateStr, findStr);
+                }
+            }
+        }
+        private class FundInfo
+        {
+            public string projId { get; set; }
+            public string amount { get; set; }
+            public string symbol { get; set; }
+            public string hash { get; set; }
+            public int sig { get; set; }
+        }
+        private void handleHasTokenCount(string projId)
+        {
+            var findStr = new JObject {
+                { "projId", projId },
+                { "proposalQueueIndex", "" },
+                { "balance", new JObject { { "$ne", 0 } } }
+            }.ToString();
+            var count = mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+
+            findStr = new JObject { { "projId", projId } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject {
+                { "hasTokenCount", count}
+            } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
+        }
+
+        //
         private void handleSummonComplete(JToken jt)
         {
             // 创建时间 + 余额
@@ -280,11 +461,13 @@ namespace NEL_FutureDao_BT.task
         }
         private void handleProcessProposal(JToken jt)
         {
-            // 提案 + 余额
+            // 提案状态 + 委托权限恢复与否 + 个人股份余额 + 项目股份总额 + 项目资产总额
+            // 
             var projId = jt["projId"].ToString();
             var proposalQueueIndex = jt["proposalIndex"].ToString();
             var applicant = jt["applicant"].ToString();
             var sharesRequested = long.Parse(jt["sharesRequested"].ToString());
+            var tokenTribute = long.Parse(jt["tokenTribute"].ToString());
             var didPass = getProposalState(jt["didPass"].ToString());
             if (didPass == ProposalState.PassYes)
             {
@@ -295,7 +478,7 @@ namespace NEL_FutureDao_BT.task
             var updateStr = new JObject { { "$set", new JObject { { "proposalState", getProposalState(didPass) }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
 
-            //
+            // 个人股份余额
             findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", applicant } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
             var now = TimeHelper.GetTimeStamp();
@@ -343,7 +526,6 @@ namespace NEL_FutureDao_BT.task
                     { "lastUpdateTime", now}
                 } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-
         }
         private void handleAbort(JToken jt)
         {
@@ -669,6 +851,10 @@ namespace NEL_FutureDao_BT.task
                 findStr = new JObject { { "projId", projId }, { "lootBalanceTp", new JObject { { "$exists", true }, { "$ne", 0 } } } }.ToString();
                 updateStr = new JObject { { "$set", new JObject { { "lootBalanceTp", 0 } } } }.ToString();
                 mh.UpdateDataMany(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+
+                findStr = new JObject { { "projId", projId }, { "fundTotalTp", new JObject { { "$ne", "0"} } } }.ToString();
+                updateStr = new JObject { { "$set", new JObject { { "fundTotalTp", "0" } } } }.ToString();
+                mh.UpdateDataMany(lConn.connStr, lConn.connDB, moloProjFundInfoCol, updateStr, findStr);
             }
             catch (Exception ex)
             {
