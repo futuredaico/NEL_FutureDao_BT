@@ -31,7 +31,7 @@ namespace NEL_FutureDao_BT.task
             rConn = Config.remoteDbConnInfo;
             lConn = Config.localDbConnInfo;
 
-            addPrefix();
+            //addPrefix();
             initIndex();
         }
 
