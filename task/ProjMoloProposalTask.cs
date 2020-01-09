@@ -617,7 +617,8 @@ namespace NEL_FutureDao_BT.task
         public const string PassYes = "10153";      // 已通过
         public const string PassNot = "10154";      // 未通过
         public const string Aborted = "10155";      // 已终止
-        public const string HandleTimeOut = "10156";      // 处理超时
+        public const string WaitHandle = "10156";           // 处理期
+        public const string HandleTimeOut = "10157";        // 处理超时
     }
     class ProposalHandleState
     {
