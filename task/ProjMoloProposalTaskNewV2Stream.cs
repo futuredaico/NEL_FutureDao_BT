@@ -220,6 +220,7 @@ namespace NEL_FutureDao_BT.task
                         { "proposalDetail", proposalDetail},
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
                         { "tokenTribute", jt["tokenTribute"].ToString()},
+                        { "tokenTributeSymbol", jt["tokenTributeSymbol"].ToString()},
                         { "proposalState", ProposalState.Voting},
                         { "handleState", ProposalHandleState.Not},
                         { "voteYesCount", 0},
@@ -428,9 +429,9 @@ namespace NEL_FutureDao_BT.task
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
                         { "lootRequested", long.Parse(jt["sharesRequested"].ToString())},
                         { "tributeOffered", jt["tributeOffered"].ToString()},
-                        { "tributeToken", jt["tributeToken"].ToString()},
+                        { "tributeTokenSymbol", jt["tributeTokenSymbol"].ToString()},
                         { "paymentRequested", jt["paymentRequested"].ToString()},
-                        { "paymentToken", jt["paymentToken"].ToString()},
+                        { "paymentTokenSymbol", jt["paymentTokenSymbol"].ToString()},
                         { "startingPeriod", ""},
 
                         { "proposalState", ProposalState.PreVote}, // -->
@@ -716,6 +717,9 @@ namespace NEL_FutureDao_BT.task
                     mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
                 }
             }
+
+            // PassYes -> HandleTimeOut
+
         }
         private JToken[] filterProjHasProccedBlockTime(JArray queryRes, long timeLimit)
         {
