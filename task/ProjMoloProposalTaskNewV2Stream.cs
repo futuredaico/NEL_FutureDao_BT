@@ -44,29 +44,56 @@ namespace NEL_FutureDao_BT.task
 
         private void addPrefix()
         {
-            var prefix = "zbak31_";
+            var prefix = "zbak33_";
             notifyCounter = prefix + notifyCounter;
             notifyCol = prefix + notifyCol;
             moloProjCounter = prefix + moloProjCounter;
             moloProjProposalInfoCol = prefix + moloProjProposalInfoCol;
-            //moloProjProposalNameInfoCol = prefix + moloProjProposalNameInfoCol;
             moloProjBalanceInfoCol = prefix + moloProjBalanceInfoCol;
             moloProjFundInfoCol = prefix + moloProjFundInfoCol;
-            //projInfoCol = prefix + projInfoCol;
-            //projHashCol = prefix + projHashCol;
+            projInfoCol = prefix + projInfoCol;
+            prefix = "";
+            moloProjProposalNameInfoCol = prefix + moloProjProposalNameInfoCol;
+            projHashCol = prefix + projHashCol;
         }
         private void initIndex()
         {
-            mh.setIndex(lConn.connStr, lConn.connDB, projInfoCol, "{'projId':1}", "i_projId");
-            mh.setIndex(lConn.connStr, lConn.connDB, projHashCol, "{'projId':1,'type':1}", "i_projId_type");
-            mh.setIndex(lConn.connStr, lConn.connDB, projHashCol, "{'contractHash':1}", "i_contractHash");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, "{'projId':1,'proposalIndex':1}", "i_projId_proposalIndex");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, "{'projId':1,'proposalQueueIndex':1}", "i_projId_proposalQueueIndex");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, "{'projId':1,'proposalState':1}", "i_projId_proposalState");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, "{'proposalId':1}", "i_proposalId");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, "{'proposalState':1,'blockTime':1}", "i_proposalState_blockTime");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalNameInfoCol, "{'contractHash':1,'proposalIndex':1}", "i_contractHash_proposalIndex");
-            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, "{'projId':1,'proposalQueueIndex':1,'address':1}", "i_projId_proposalQueueIndex_address");
+            mh.setIndex(lConn.connStr, lConn.connDB, projInfoCol, 
+                "{'projId':1}", "i_projId");
+            //
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, 
+                "{'projId':1,'proposalIndex':1}", "i_projId_proposalIndex");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, 
+                "{'projId':1,'proposalQueueIndex':1}", "i_projId_proposalQueueIndex");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, 
+                "{'projId':1,'proposalState':1}", "i_projId_proposalState");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, 
+                "{'proposalId':1}", "i_proposalId");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, 
+                "{'proposalState':1,'blockTime':1}", "i_proposalState_blockTime");
+            //
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalNameInfoCol, 
+                "{'contractHash':1,'proposalIndex':1}", "i_contractHash_proposalIndex");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjProposalNameInfoCol,
+                "{'contractHash':1,'proposalIndex':1}", "i_contractHash_proposalIndex");
+            //
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, 
+                "{'projId':1,'proposalQueueIndex':1,'address':1}", "i_projId_proposalQueueIndex_address");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol,
+                "{'projId':1,'proposalQueueIndex':1,'balance':1}", "i_projId_proposalQueueIndex_balance");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol,
+              "{'newDelegateKey':1}", "i_newDelegateKey");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol,
+               "{'projId':1,'balanceTp'}", "i_projId_balanceTp");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol,
+               "{'projId':1,'sharesBalanceTp'}", "i_projId_sharesBalanceTp");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol,
+               "{'projId':1,'lootBalanceTp'}", "i_projId_lootBalanceTp");
+            //
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjFundInfoCol,
+               "{'projId':1,'fundHash'}", "i_projId_fundHash");
+            mh.setIndex(lConn.connStr, lConn.connDB, moloProjFundInfoCol,
+               "{'projId':1,'fundTotalTp'}", "i_projId_fundTotalTp");
         }
 
         public override void process()
@@ -97,26 +124,22 @@ namespace NEL_FutureDao_BT.task
             var res = queryRes.OrderBy(p => long.Parse(p["counter"].ToString()));
             foreach (var item in res)
             {
+                var topics = item["topics"].ToString();
+
+                processProjCreateTime(item, topics);
+                processDelegateKey(item, topics);
+                processProposalInfo(item, topics);
+                processProposalQueueInfoV2(item, topics);
+                processProposalVote(item, topics);
+                processProposalVoteCount(item, topics);
+                processProposalResult(item, topics);
+                processAbort(item, topics);
+                processPersonShare(item, topics);
+                processProjShareAndTeamAndFund(item, topics);
+
                 var counter = long.Parse(item["counter"].ToString());
                 var blockNumber = long.Parse(item["blockNumber"].ToString());
                 var blockTime = long.Parse(item["blockTime"].ToString());
-                var topics = item["topics"].ToString();
-                if (topics == Topic.SummonComplete.hash) handleSummonComplete(item);
-                if (topics == Topic.UpdateDelegateKey.hash) handleUpdateDelegateKey(item);
-                if (topics == Topic.SubmitProposal.hash) handleSubmitProposal(item);
-                if (topics == Topic.SubmitVote.hash) handleSubmitVote(item);
-                if (topics == Topic.ProcessProposal.hash) handleProcessProposal(item);
-                if (topics == Topic.Ragequit.hash) handleRagequit(item);
-                if (topics == Topic.Abort.hash) handleAbort(item);
-                if (topics == Topic.SubmitProposal_v2.hash) handleSubmitProposalV2(item);
-                if (topics == Topic.SponsorProposal_v2.hash) handleSponsorProposalV2(item);
-                if (topics == Topic.ProcessProposal_v2.hash) handleProcessProposalV2(item);
-                if (topics == Topic.CancelProposal_v2.hash) handleCancelProposalV2(item);
-                if (topics == Topic.Ragequit_v2.hash) handleRagequitV2(item);
-
-                // 股份总额 + 资产总额
-                handleShareAndFund(item);
-
                 updateL(counter, blockNumber, blockTime);
                 log(counter, blockNumber, blockTime);
                 if (topics == Topic.SummonComplete.hash
@@ -133,6 +156,445 @@ namespace NEL_FutureDao_BT.task
             }
         }
 
+
+
+        // 0.项目创建时间
+        private void processProjCreateTime(JToken jt, string topics)
+        {
+            if (topics != Topic.SummonComplete.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var findStr = new JObject { { "projId", projId } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject {
+                    { "startTime", jt["blockTime"] }
+                } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
+        }
+
+        // 1.委托地址
+        private void processDelegateKey(JToken jt, string topics)
+        {
+            if (topics != Topic.UpdateDelegateKey.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var memberAddress = jt["memberAddress"].ToString();
+            var newDelegateKey = jt["newDelegateKey"].ToString();
+            var findStr = new JObject {
+                { "projId", projId },
+                { "proposalQueueIndex", "" },
+                { "address", memberAddress }
+            }.ToString();
+            var updateStr = new JObject { { "$set", new JObject {
+                { "newDelegateKey", newDelegateKey}
+            } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+        }
+
+        // 2.提案信息
+        private void processProposalInfo(JToken jt, string topics)
+        {
+            // v2.0
+            processProposalInfoV2(jt, topics);
+
+            // v1.0
+            if (topics != Topic.SubmitProposal.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalIndex = jt["proposalIndex"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
+            {
+                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
+                var newdata = new JObject {
+                        { "projId", projId},
+                        { "proposalIndex", proposalIndex},
+                        { "proposalQueueIndex", proposalIndex},
+                        { "proposalId", projId+proposalIndex},
+                        { "proposalName", proposalName},
+                        { "proposalDetail", proposalDetail},
+                        { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
+                        { "tokenTribute", jt["tokenTribute"].ToString()},
+                        { "tokenTributeSymbol", jt["tokenTributeSymbol"].ToString()},
+                        { "proposalState", ProposalState.Voting},
+                        { "handleState", ProposalHandleState.Not},
+                        { "voteYesCount", 0},
+                        { "voteNotCount", 0},
+                        { "proposer", jt["memberAddress"]},
+                        { "delegateKey", jt["delegateKey"]},
+                        { "applicant", jt["applicant"]},
+                        { "transactionHash", jt["transactionHash"]},
+                        { "contractHash", jt["contractHash"]},
+                        { "blockNumber", jt["blockNumber"] },
+                        { "blockTime", jt["blockTime"] },
+                        {"time", TimeHelper.GetTimeStamp() }
+                    }.ToString();
+                mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
+            }
+        }
+        private void processProposalInfoV2(JToken jt, string topics)
+        {
+            if (topics != Topic.SubmitProposal_v2.hash) return;
+
+            var projId = jt["projId"].ToString();
+            var proposalIndex = jt["proposalIndex"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
+            {
+                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
+                var newdata = new JObject {
+                        { "projId", projId},
+                        { "proposalIndex", proposalIndex},
+                        { "proposalQueueIndex", ""},
+                        { "proposalId", projId+proposalIndex},
+                        { "proposalName", proposalName},
+                        { "proposalDetail", proposalDetail},
+                        //{ "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
+                        //{ "tokenTribute", jt["tokenTribute"].ToString()},
+                        { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
+                        { "lootRequested", long.Parse(jt["sharesRequested"].ToString())},
+                        { "tributeOffered", jt["tributeOffered"].ToString()},
+                        { "tributeTokenSymbol", jt["tributeTokenSymbol"].ToString()},
+                        { "paymentRequested", jt["paymentRequested"].ToString()},
+                        { "paymentTokenSymbol", jt["paymentTokenSymbol"].ToString()},
+                        { "startingPeriod", ""},
+
+                        { "proposalState", ProposalState.PreVote}, // -->
+                        { "handleState", ProposalHandleState.Not},
+                        { "voteYesCount", 0},
+                        { "voteNotCount", 0},
+                        { "proposer", jt["memberAddress"]},
+                        { "delegateKey", jt["delegateKey"]},
+                        { "applicant", jt["applicant"]},
+                        { "transactionHash", jt["transactionHash"]},
+                        { "contractHash", jt["contractHash"]},
+                        { "blockNumber", jt["blockNumber"] },
+                        { "blockTime", jt["blockTime"] },
+                        {"time", TimeHelper.GetTimeStamp() }
+                    }.ToString();
+                mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
+            }
+        }
+        // 3.提案队列信息(v2.0新增)
+        private void processProposalQueueInfoV2(JToken jt, string topics)
+        {
+            if (topics != Topic.SponsorProposal_v2.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalIndex = jt["proposalIndex"];
+            var proposalQueueIndex = jt["proposalQueueIndex"];
+            var startingPeriod = jt["startingPeriod"];
+            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
+
+            var updateStr = new JObject { { "$set", new JObject {
+                    { "proposalQueueIndex", proposalQueueIndex},
+                    { "proposalState", ProposalState.Voting},
+                    { "startingPeriod", startingPeriod}
+                } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+        }
+
+        // 4.提案个人投票
+        private void processProposalVote(JToken jt, string topics)
+        {
+            if (topics != Topic.SubmitVote.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalQueueIndex = jt["proposalIndex"].ToString();
+            var memberAddress = jt["memberAddress"].ToString();
+            var uintVote = jt["uintVote"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex }, { "address", memberAddress } }.ToString();
+            var now = TimeHelper.GetTimeStamp();
+            var balance = getCurrentBalance(projId, memberAddress);
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr) == 0)
+            {
+                var newdata = new JObject {
+                        { "projId", projId},
+                        { "proposalQueueIndex", proposalQueueIndex},
+                        { "type", uintVote},
+                        { "address", memberAddress},
+                        { "balance", balance},
+                        { "balanceTp", 0},
+                        { "time", now},
+                        { "lastUpdateTime", now}
+                    }.ToString();
+                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
+                return;
+            }
+            var updateStr = new JObject {{"$set", new JObject{
+                    { "type", uintVote},
+                    { "balance", balance},
+                    { "balanceTp",balance},
+                    { "lastUpdateTime", now}
+                } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+
+        }
+
+        // 5.提案赞成反对票
+        private void processProposalVoteCount(JToken jt, string topics)
+        {
+            if (topics != Topic.SubmitVote.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalQueueIndex = jt["proposalIndex"].ToString();
+            var rr = getCurrentVoteCount(projId, proposalQueueIndex);
+            var zanYesCount = rr.GetValueOrDefault(BalanceType.ZanYes);
+            var zanNotCount = rr.GetValueOrDefault(BalanceType.ZanNot);
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject { { "voteYesCount", zanYesCount }, { "voteNotCount", zanNotCount } } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+        }
+
+        // 6.提案处理结果
+        private void processProposalResult(JToken jt, string topics)
+        {
+            //v2.0
+            processProposalResultV2(jt, topics);
+
+            //v1.0
+            if (topics != Topic.ProcessProposal.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalQueueIndex = jt["proposalIndex"].ToString();
+            var applicant = jt["applicant"].ToString();
+            var didPass = getProposalState(jt["didPass"].ToString());
+            if (didPass == ProposalState.PassYes)
+            {
+                // 受益人收到股份, 自动退回权限
+                resetDelegateKey(applicant);
+            }
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject { { "proposalState", getProposalState(didPass) }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+        }
+        private void processProposalResultV2(JToken jt, string topics)
+        {
+            if (topics != Topic.ProcessProposal_v2.hash) return;
+
+            var projId = jt["projId"].ToString();
+            var proposalQueueIndex = jt["proposalIndex"];
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            if (queryRes.Count == 0) return;
+
+            var item = queryRes[0];
+            var state = item["proposalState"].ToString();
+            if (state == ProposalState.HandleTimeOut) return;
+
+            var didPass = jt["didPass"].ToString();
+            var voteRes = getProposalState(didPass);
+            //
+            if (voteRes == ProposalState.PassYes)
+            {
+                // 受益人收到股份, 自动退回权限
+                resetDelegateKey(item["applicant"].ToString());
+            }
+            var updateStr = new JObject { { "$set", new JObject { { "proposalState", voteRes }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+        }
+        // 7.提案终止
+        private void processAbort(JToken jt, string topics)
+        {
+            // v2.0
+            processCancleProposalV2(jt, topics);
+            // v1.0
+            if (topics != Topic.Abort.hash) return;
+
+            var projId = jt["projId"].ToString();
+            var propoalQueueIndex = jt["proposalIndex"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", propoalQueueIndex } }.ToString();
+            var updateStr = new JObject { { "$set", new JObject {
+                { "proposalState", ProposalState.Aborted },
+                { "handleState", ProposalHandleState.Yes }
+            } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+
+        }
+        private void processCancleProposalV2(JToken jt, string topics)
+        {
+            if (topics != Topic.CancelProposal_v2.hash) return;
+            //
+            var projId = jt["projId"].ToString();
+            var proposalIndex = jt["proposalIndex"];
+            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
+            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
+
+            var updateStr = new JObject { { "$set", new JObject {
+                    { "proposalState", ProposalState.Aborted},
+                    { "handleState", ProposalHandleState.Yes},
+                } } }.ToString();
+        }
+
+
+        // 8.个人股份余额
+        private void processPersonShare(JToken jt, string topics)
+        {
+            //v2.0
+            processPersonShareV2(jt, topics);
+            //v1.0
+            if (!(topics == Topic.SummonComplete.hash
+                || (topics == Topic.ProcessProposal.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Ragequit.hash
+                ))
+            {
+                return;
+            }
+            var address = "";
+            var shares = 0L;
+            if (topics == Topic.SummonComplete.hash)
+            {
+                address = jt["summoner"].ToString();
+                shares = long.Parse(jt["shares"].ToString());
+            } else if(topics == Topic.ProcessProposal.hash)
+            {
+                address = jt["applicant"].ToString();
+                shares = long.Parse(jt["sharesRequested"].ToString());
+
+            } else
+            {
+                address = jt["memberAddress"].ToString();
+                shares = long.Parse(jt["sharesToBurn"].ToString());
+                shares *= -1;
+            }
+            var projId = jt["projId"].ToString();
+            var now = TimeHelper.GetTimeStamp();
+            var findStr = new JObject {
+                    { "projId", projId },
+                    { "proposalQueueIndex", "" },
+                    { "address", address }
+                }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+            if (queryRes.Count == 0)
+            {
+                var newdata = new JObject {
+                        { "projId", projId},
+                        { "proposalQueueIndex", ""},
+                        { "type", BalanceType.Balance},
+                        { "address", address},
+                        { "balance", shares},
+                        { "sharesBalance", shares},
+                        { "sharesBalanceTp", shares},
+                        { "lootBalance", 0},
+                        { "lootBalanceTp", 0},
+                        { "newDelegateKey",""},
+                        { "time", now},
+                        { "lastUpdateTime", now}
+                    }.ToString();
+                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
+                return;
+            }
+
+            var rItem = queryRes[0];
+            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
+            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
+
+            if (tempNotClearAllFlag) sharesBalanceTp = 0;
+            sharesBalance += shares - sharesBalanceTp;
+            sharesBalanceTp += shares;
+            var balance = sharesBalance;
+            var updateStr = new JObject { {"$set", new JObject {
+                    { "balance", balance},
+                    { "sharesBalance", sharesBalance},
+                    { "sharesBalanceTp", sharesBalanceTp},
+                    { "lastUpdateTime", now}
+                } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+        }
+        private void processPersonShareV2(JToken jt, string topics)
+        {
+            if (!((topics == Topic.ProcessProposal_v2.hash && getProposalState(jt["didPass"].ToString()) == ProposalState.PassYes)
+                || topics == Topic.Ragequit_v2.hash
+                ))
+            {
+                return;
+            }
+            //
+            var projId = jt["projId"].ToString();
+            var proposalQueueIndex = jt["proposalIndex"].ToString();
+
+            var address = "";
+            var shares = 0L;
+            var loot = 0L;
+            if (topics == Topic.ProcessProposal_v2.hash)
+            {
+                var subfindStr = new JObject { { "projId", projId },{ "proposalQueueIndex", proposalQueueIndex} }.ToString();
+                var subqueryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, subfindStr);
+                if (subqueryRes.Count == 0) return;
+
+                var item = subqueryRes[0];
+                shares = long.Parse(item["sharesRequested"].ToString());
+                loot = long.Parse(item["lootRequested"].ToString());
+            } else
+            {
+                shares = long.Parse(jt["sharesToBurn"].ToString());
+                loot = long.Parse(jt["lootToBurn"].ToString());
+                shares *= -1;
+                loot *= -1;
+            }
+
+            var now = TimeHelper.GetTimeStamp();
+            var findStr = new JObject {
+                    { "projId", projId },
+                    { "proposalQueueIndex", "" },
+                    { "address", address }
+                }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+            if (queryRes.Count == 0)
+            {
+                var newdata = new JObject {
+                        { "projId", projId},
+                        { "proposalQueueIndex", ""},
+                        { "type", BalanceType.Balance},
+                        { "address", address},
+                        { "balance", shares + loot},
+                        { "sharesBalance", shares},
+                        { "sharesBalanceTp", shares},
+                        { "lootBalance", loot},
+                        { "lootBalanceTp", loot},
+                        { "newDelegateKey",""},
+                        { "time", now},
+                        { "lastUpdateTime", now}
+                    }.ToString();
+                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
+                return;
+            }
+
+            var rItem = queryRes[0];
+            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
+            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
+            var lootBalance = long.Parse(rItem["lootBalance"].ToString());
+            var lootBalanceTp = long.Parse(rItem["lootBalanceTp"].ToString());
+
+            if (tempNotClearAllFlag)
+            {
+                sharesBalanceTp = 0;
+                lootBalanceTp = 0;
+            }
+            sharesBalance += shares - sharesBalanceTp;
+            sharesBalanceTp += shares;
+            lootBalance += loot - lootBalanceTp;
+            lootBalanceTp += loot;
+            var balance = sharesBalance + lootBalance;
+            var updateStr = new JObject { {"$set", new JObject {
+                    { "balance", balance},
+                    { "sharesBalance", sharesBalance},
+                    { "sharesBalanceTp", sharesBalanceTp},
+                    { "lootBalance", lootBalance},
+                    { "lootBalanceTp", lootBalanceTp},
+                    { "lastUpdateTime", now}
+                } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
+        }
+
+
+        // 9.项目股份总额、持有人数、资金总额
+        private void processProjShareAndTeamAndFund(JToken jt, string topics)
+        {
+            handleShareAndFund(jt);
+        }
+
+        
         //
         private void handleShareAndFund(JToken jt)
         {
@@ -308,435 +770,6 @@ namespace NEL_FutureDao_BT.task
             public int sig { get; set; }
         }
         
-        //
-        private void handleSummonComplete(JToken jt)
-        {
-            // 创建时间 + 余额
-            var projId = jt["projId"].ToString();
-            var summoner = jt["summoner"].ToString();
-            var shares = long.Parse(jt["shares"].ToString());
-
-            // 创建时间
-            var findStr = new JObject { { "projId", projId } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject {
-                { "startTime", jt["blockTime"]
-                } } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, projInfoCol, updateStr, findStr);
-
-            // 余额
-            var now = TimeHelper.GetTimeStamp();
-            findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", summoner } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-            if (queryRes.Count == 0)
-            {
-                var newdata = new JObject {
-                        { "projId", projId},
-                        { "proposalQueueIndex", ""},
-                        { "type", BalanceType.Balance},
-                        { "address", summoner},
-                        { "balance", shares},
-                        { "sharesBalance", shares},
-                        { "sharesBalanceTp", 0},
-                        { "lootBalance", 0},
-                        { "lootBalanceTp", 0},
-                        { "newDelegateKey",""},
-                        { "time", now},
-                        { "lastUpdateTime", now}
-                    }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                return;
-            }
-
-            var rItem = queryRes[0];
-            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
-            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
-            var lootBalance = long.Parse(rItem["lootBalance"].ToString());
-            var lootBalanceTp = long.Parse(rItem["lootBalanceTp"].ToString());
-
-            if (tempNotClearAllFlag)
-            {
-                sharesBalanceTp = 0;
-                lootBalanceTp = 0;
-            }
-            sharesBalance += shares - sharesBalanceTp;
-            sharesBalanceTp += shares;
-            lootBalance += 0 - lootBalanceTp;
-            lootBalanceTp += 0;
-            var balance = sharesBalance + lootBalance;
-            updateStr = new JObject { {"$set", new JObject {
-                    { "balance", balance},
-                    { "sharesBalance", sharesBalance},
-                    { "sharesBalanceTp", sharesBalanceTp},
-                    { "lootBalance", lootBalance},
-                    { "lootBalanceTp", lootBalanceTp},
-                    { "lastUpdateTime", now}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-        }
-        private void handleUpdateDelegateKey(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var memberAddress = jt["memberAddress"].ToString();
-            var newDelegateKey = jt["newDelegateKey"].ToString();
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", memberAddress } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject {
-                { "newDelegateKey", newDelegateKey}
-            } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-        }
-        private void handleSubmitProposal(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var proposalIndex = jt["proposalIndex"].ToString();
-            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
-            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
-            {
-                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
-                var newdata = new JObject {
-                        { "projId", projId},
-                        { "proposalIndex", proposalIndex},
-                        { "proposalQueueIndex", proposalIndex},
-                        { "proposalId", projId+proposalIndex},
-                        { "proposalName", proposalName},
-                        { "proposalDetail", proposalDetail},
-                        { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        { "tokenTribute", jt["tokenTribute"].ToString()},
-                        { "tokenTributeSymbol", jt["tokenTributeSymbol"].ToString()},
-                        { "proposalState", ProposalState.Voting},
-                        { "handleState", ProposalHandleState.Not},
-                        { "voteYesCount", 0},
-                        { "voteNotCount", 0},
-                        { "proposer", jt["memberAddress"]},
-                        { "delegateKey", jt["delegateKey"]},
-                        { "applicant", jt["applicant"]},
-                        { "transactionHash", jt["transactionHash"]},
-                        { "contractHash", jt["contractHash"]},
-                        { "blockNumber", jt["blockNumber"] },
-                        { "blockTime", jt["blockTime"] },
-                        {"time", TimeHelper.GetTimeStamp() }
-                    }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
-            }
-        }
-        private void handleSubmitVote(JToken jt)
-        {
-            // 个人投票数 + 提案赞成反对票数
-            //
-            var projId = jt["projId"].ToString();
-            var proposalQueueIndex = jt["proposalIndex"].ToString();
-            var memberAddress = jt["memberAddress"].ToString();
-            var uintVote = jt["uintVote"].ToString();
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex }, { "address", memberAddress } }.ToString();
-            var now = TimeHelper.GetTimeStamp();
-            var balance = getCurrentBalance(projId, memberAddress);
-            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr) == 0)
-            {
-                var newdata = new JObject {
-                        { "projId", projId},
-                        { "proposalQueueIndex", proposalQueueIndex},
-                        { "type", uintVote},
-                        { "address", memberAddress},
-                        { "balance", balance},
-                        { "balanceTp", 0},
-                        { "time", now},
-                        { "lastUpdateTime", now}
-                    }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                return;
-            }
-            var updateStr = new JObject {{"$set", new JObject{
-                    { "type", uintVote},
-                    { "balance", balance},
-                    { "balanceTp",balance},
-                    { "lastUpdateTime", now}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-            //
-            var rr = getCurrentVoteCount(projId, proposalQueueIndex);
-            var zanYesCount = rr.GetValueOrDefault(BalanceType.ZanYes);
-            var zanNotCount = rr.GetValueOrDefault(BalanceType.ZanNot);
-            findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
-            updateStr = new JObject { { "$set", new JObject { { "voteYesCount", zanYesCount }, { "voteNotCount", zanNotCount } } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
-        }
-        private void handleProcessProposal(JToken jt)
-        {
-            // 提案状态 + 委托权限恢复与否 + 个人股份余额 + 项目股份总额 + 项目资产总额
-            // 
-            var projId = jt["projId"].ToString();
-            var proposalQueueIndex = jt["proposalIndex"].ToString();
-            var applicant = jt["applicant"].ToString();
-            var sharesRequested = long.Parse(jt["sharesRequested"].ToString());
-            var tokenTribute = long.Parse(jt["tokenTribute"].ToString());
-            var didPass = getProposalState(jt["didPass"].ToString());
-            if (didPass == ProposalState.PassYes)
-            {
-                // 受益人收到股份, 自动退回权限
-                resetDelegateKey(applicant);
-            }
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject { { "proposalState", getProposalState(didPass) }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
-
-            // 个人股份余额
-            findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", applicant } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-            var now = TimeHelper.GetTimeStamp();
-            if (queryRes.Count == 0)
-            {
-                var newdata = new JObject {
-                    { "projId", projId},
-                    { "proposalQueueIndex", ""},
-                    { "type", BalanceType.Balance},
-                    { "address", applicant},
-                    { "balance", sharesRequested},
-                    { "sharesBalance", sharesRequested},
-                    { "sharesBalanceTp", sharesRequested},
-                    { "lootBalance", 0},
-                    { "lootBalanceTp", 0},
-                    { "newDelegateKey",""},
-                    { "time", now},
-                    { "lastUpdateTime", now}
-                }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                return;
-            }
-            var rItem = queryRes[0];
-            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
-            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
-            var lootBalance = long.Parse(rItem["lootBalance"].ToString());
-            var lootBalanceTp = long.Parse(rItem["lootBalanceTp"].ToString());
-
-            if (tempNotClearAllFlag)
-            {
-                sharesBalanceTp = 0;
-                lootBalanceTp = 0;
-            }
-            sharesBalance += sharesRequested - sharesBalanceTp;
-            sharesBalanceTp += sharesRequested;
-            lootBalance += 0 - lootBalanceTp;
-            lootBalanceTp += 0;
-            var balance = sharesBalance + lootBalance;
-            updateStr = new JObject { {"$set", new JObject {
-                    { "balance", balance},
-                    { "sharesBalance", sharesBalance},
-                    { "sharesBalanceTp", sharesBalanceTp},
-                    { "lootBalance", lootBalance},
-                    { "lootBalanceTp", lootBalanceTp},
-                    { "lastUpdateTime", now}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-        }
-        private void handleAbort(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var propoalQueueIndex = jt["proposalIndex"].ToString();
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", propoalQueueIndex } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject { { "proposalState", ProposalState.Aborted }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
-        }
-        private void handleRagequit(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var memberAddress = jt["memberAddress"].ToString();
-            var sharesToBurn = long.Parse(jt["sharesToBurn"].ToString());
-            sharesToBurn *= -1;
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", memberAddress } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-            var now = TimeHelper.GetTimeStamp();
-            if (queryRes.Count == 0)
-            {
-                var newdata = new JObject {
-                    { "projId", projId},
-                    { "proposalQueueIndex", ""},
-                    { "type", BalanceType.Balance},
-                    { "address", memberAddress},
-                    { "balance", sharesToBurn},
-                    { "sharesBalance", sharesToBurn},
-                    { "sharesBalanceTp", sharesToBurn},
-                    { "lootBalance", 0},
-                    { "lootBalanceTp", 0},
-                    { "newDelegateKey",""},
-                    { "time", now},
-                    { "lastUpdateTime", now}
-                }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                return;
-            }
-            var rItem = queryRes[0];
-            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
-            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
-            var lootBalance = long.Parse(rItem["lootBalance"].ToString());
-            var lootBalanceTp = long.Parse(rItem["lootBalanceTp"].ToString());
-
-            if (tempNotClearAllFlag)
-            {
-                sharesBalanceTp = 0;
-                lootBalanceTp = 0;
-            }
-            sharesBalance += sharesToBurn - sharesBalanceTp;
-            sharesBalanceTp += sharesToBurn;
-            lootBalance += 0 - lootBalanceTp;
-            lootBalanceTp += 0;
-            var balance = sharesBalance + lootBalance;
-            var updateStr = new JObject { {"$set", new JObject {
-                    { "balance", balance},
-                    { "sharesBalance", sharesBalance},
-                    { "sharesBalanceTp", sharesBalanceTp},
-                    { "lootBalance", lootBalance},
-                    { "lootBalanceTp", lootBalanceTp},
-                    { "lastUpdateTime", now}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-
-        }
-        //
-        private void handleSubmitProposalV2(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var proposalIndex = jt["proposalIndex"].ToString();
-            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
-            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
-            {
-                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
-                var newdata = new JObject {
-                        { "projId", projId},
-                        { "proposalIndex", proposalIndex},
-                        { "proposalQueueIndex", ""},
-                        { "proposalId", projId+proposalIndex},
-                        { "proposalName", proposalName},
-                        { "proposalDetail", proposalDetail},
-                        //{ "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        //{ "tokenTribute", jt["tokenTribute"].ToString()},
-                        { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        { "lootRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        { "tributeOffered", jt["tributeOffered"].ToString()},
-                        { "tributeTokenSymbol", jt["tributeTokenSymbol"].ToString()},
-                        { "paymentRequested", jt["paymentRequested"].ToString()},
-                        { "paymentTokenSymbol", jt["paymentTokenSymbol"].ToString()},
-                        { "startingPeriod", ""},
-
-                        { "proposalState", ProposalState.PreVote}, // -->
-                        { "handleState", ProposalHandleState.Not},
-                        { "voteYesCount", 0},
-                        { "voteNotCount", 0},
-                        { "proposer", jt["memberAddress"]},
-                        { "delegateKey", jt["delegateKey"]},
-                        { "applicant", jt["applicant"]},
-                        { "transactionHash", jt["transactionHash"]},
-                        { "contractHash", jt["contractHash"]},
-                        { "blockNumber", jt["blockNumber"] },
-                        { "blockTime", jt["blockTime"] },
-                        {"time", TimeHelper.GetTimeStamp() }
-                    }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
-            }
-        }
-        private void handleSponsorProposalV2(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var proposalIndex = jt["proposalIndex"];
-            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
-            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
-
-            var updateStr = new JObject { { "$set", new JObject {
-                    { "proposalQueueIndex", jt["proposalQueueIndex"]},
-                    { "proposalState", ProposalState.Voting},
-                    { "startingPeriod", jt["startingPeriod"]}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
-        }
-        private void handleProcessProposalV2(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var proposalQueueIndex = jt["proposalIndex"];
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
-            if (queryRes.Count == 0) return;
-
-            var item = queryRes[0];
-            var state = item["proposalState"].ToString();
-            if (state == ProposalState.HandleTimeOut) return;
-
-            var didPass = jt["didPass"].ToString();
-            var voteRes = getProposalState(didPass);
-            //
-            if (voteRes == ProposalState.PassYes)
-            {
-                // 受益人收到股份, 自动退回权限
-                resetDelegateKey(item["applicant"].ToString());
-            }
-            var updateStr = new JObject { { "$set", new JObject { { "proposalState", voteRes }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
-        }
-        private void handleCancelProposalV2(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var proposalIndex = jt["proposalIndex"];
-            var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
-            if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
-
-            var updateStr = new JObject { { "$set", new JObject {
-                    { "proposalState", ProposalState.Aborted},
-                    { "handleState", ProposalHandleState.Yes},
-                } } }.ToString();
-        }
-        private void handleRagequitV2(JToken jt)
-        {
-            var projId = jt["projId"].ToString();
-            var memberAddress = jt["memberAddress"].ToString();
-            var sharesToBurn = long.Parse(jt["sharesToBurn"].ToString());
-            var lootToBurn = long.Parse(jt["lootToBurn"].ToString());
-            sharesToBurn *= -1;
-            lootToBurn *= -1;
-            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", memberAddress } }.ToString();
-            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
-            var now = TimeHelper.GetTimeStamp();
-            if (queryRes.Count == 0)
-            {
-                var newdata = new JObject {
-                    { "projId", projId},
-                    { "proposalQueueIndex", ""},
-                    { "type", BalanceType.Balance},
-                    { "balance", sharesToBurn},
-                    { "sharesBalance", sharesToBurn},
-                    { "sharesBalanceTp", sharesToBurn},
-                    { "sharesBalance", 0},
-                    { "sharesBalanceTp", 0},
-                    { "newDelegateKey",""},
-                    { "time", now},
-                    { "lastUpdateTime", now}
-                }.ToString();
-                mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
-                return;
-            }
-            var rItem = queryRes[0];
-            var sharesBalance = long.Parse(rItem["sharesBalance"].ToString());
-            var sharesBalanceTp = long.Parse(rItem["sharesBalanceTp"].ToString());
-            var lootBalance = long.Parse(rItem["lootBalance"].ToString());
-            var lootBalanceTp = long.Parse(rItem["lootBalanceTp"].ToString());
-
-            if (tempNotClearAllFlag)
-            {
-                sharesBalanceTp = 0;
-                lootBalanceTp = 0;
-            }
-            sharesBalance += sharesToBurn - sharesBalanceTp;
-            sharesBalanceTp += sharesToBurn;
-            lootBalance += lootToBurn - lootBalanceTp;
-            lootBalanceTp += lootToBurn;
-            var balance = sharesBalance + lootBalance;
-            var updateStr = new JObject { {"$set", new JObject {
-                    { "balance", balance},
-                    { "sharesBalance", sharesBalance},
-                    { "sharesBalanceTp", sharesBalanceTp},
-                    { "lootBalance", lootBalance},
-                    { "lootBalanceTp", lootBalanceTp},
-                    { "lastUpdateTime", now}
-                } } }.ToString();
-            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
-        }
-
         // 委托
         private void resetDelegateKey(string delegateKey)
         {
