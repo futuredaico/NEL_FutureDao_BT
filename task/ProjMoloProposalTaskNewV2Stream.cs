@@ -116,7 +116,7 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCol, findStr, sortStr, 0, batchSize);
             if (queryRes.Count == 0)
             {
-                updateL(0, rh, rt);
+                updateL(-1, rh, rt);
                 log(lc, rh, rh);
                 return;
             }

@@ -75,14 +75,14 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetData(rConn.connStr, rConn.connDB, eventLogsCol, findStr, sortStr, 0, batchSize);
             if (queryRes.Count == 0)
             {
-                UpdateL(0, rh, rt);
+                UpdateL(-1, rh, rt);
                 Log(lastCounter, lh, rh);
                 return;
             }
             var res = queryRes.Where(p => hashDict.ContainsKey(p["contractHash"].ToString().ToLower()));
             if (res.Count() == 0)
             {
-                UpdateL(0, rh, rt);
+                UpdateL(-1, rh, rt);
                 Log(lastCounter, lh, rh);
                 return;
             }
@@ -425,7 +425,7 @@ namespace NEL_FutureDao_BT.task
                 return;
             }
             var updateJo = new JObject { { "lastBlockIndex", index }, { "lastBlockTime", time } };
-            if (lastCounter > 0) updateJo.Add("lastCounter", lastCounter);
+            if (lastCounter > -1) updateJo.Add("lastCounter", lastCounter);
             var updateStr = new JObject { { "$set", updateJo } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, notifyCounter, updateStr, findStr);
         }
