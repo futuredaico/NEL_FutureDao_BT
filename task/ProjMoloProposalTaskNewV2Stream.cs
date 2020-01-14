@@ -251,11 +251,11 @@ namespace NEL_FutureDao_BT.task
                         //{ "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
                         //{ "tokenTribute", jt["tokenTribute"].ToString()},
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
-                        { "lootRequested", long.Parse(jt["sharesRequested"].ToString())},
+                        { "lootRequested", long.Parse(jt["lootRequested"].ToString())},
                         { "tributeOffered", jt["tributeOffered"].ToString()},
-                        { "tributeTokenSymbol", jt["tributeTokenSymbol"].ToString()},
+                        { "tributeTokenSymbol", jt["tributeOfferedSymbol"].ToString()},
                         { "paymentRequested", jt["paymentRequested"].ToString()},
-                        { "paymentTokenSymbol", jt["paymentTokenSymbol"].ToString()},
+                        { "paymentTokenSymbol", jt["paymentRequestedSymbol"].ToString()},
                         { "startingPeriod", ""},
 
                         { "proposalState", ProposalState.PreVote}, // -->
@@ -907,10 +907,11 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject {
                 { "proposalState", ProposalState.Voting }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            var res = filterProjWithEachConfig(queryRes, lt, StateFilterType.VOTE);
             var updateStr = "";
-            if (queryRes != null && queryRes.Count() > 0)
+            if (res != null && res.Count() > 0)
             {
-                foreach (var item in queryRes)
+                foreach (var item in res)
                 {
                     var yesCount = long.Parse(item["voteYesCount"].ToString());
                     var notCount = long.Parse(item["voteNotCount"].ToString());
@@ -926,10 +927,11 @@ namespace NEL_FutureDao_BT.task
             findStr = new JObject {
                 { "proposalState", ProposalState.Noting }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            res = filterProjWithEachConfig(queryRes, lt, StateFilterType.NOTE);
             updateStr = "";
-            if (queryRes != null && queryRes.Count() > 0)
+            if (res != null && res.Count() > 0)
             {
-                foreach (var item in queryRes)
+                foreach (var item in res)
                 {
                     findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
                     var state = ProposalState.PassYes;
@@ -944,6 +946,7 @@ namespace NEL_FutureDao_BT.task
             findStr = new JObject {
                { "proposalState", ProposalState.WaitHandle }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            //res = filterProjWithEachConfig(queryRes, lt, StateFilterType.WaitHandle);
             updateStr = "";
             if (queryRes != null && queryRes.Count() > 0)
             {
@@ -956,6 +959,48 @@ namespace NEL_FutureDao_BT.task
                     mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
                 }
             }
+        }
+        private JToken[] filterProjWithEachConfig(JArray JA, long lt, string type)
+        {
+            return JA.Where(p => filterProjWithEachConfig(p, lt, type)).ToArray();
+        }
+        private bool filterProjWithEachConfig(JToken jt, long lt, string type)
+        {
+            var findStr = new JObject { { "projId", jt["projId"] } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, projInfoCol, findStr);
+            if (queryRes.Count == 0) return false;
+
+            var item = queryRes[0];
+            var startTime = long.Parse(item["startTime"].ToString());
+            var timeLimit = getTimeLimit(item, type);
+            return lt > startTime + timeLimit;
+        }
+        private long getTimeLimit(JToken jt, string type)
+        {
+            if (type == StateFilterType.VOTE)
+            {
+                return long.Parse(jt["votePeriod"].ToString());
+            }
+            if (type == StateFilterType.VOTE)
+            {
+                return long.Parse(jt["votePeriod"].ToString());
+            }
+            if (type == StateFilterType.VOTE)
+            {
+                return long.Parse(jt["votePeriod"].ToString());
+            }
+            if (type == StateFilterType.WaitHandle)
+            {
+                return long.Parse(jt["votePeriod"].ToString());
+            }
+            return 0;
+        }
+        class StateFilterType
+        {
+            public const string VOTE = "0";
+            public const string NOTE = "1";
+            public const string CANCEL = "2";
+            public const string WaitHandle = "3";
         }
 
         //
