@@ -268,7 +268,7 @@ namespace NEL_FutureDao_BT.task
                         { "transactionHash", jt["transactionHash"]},
                         { "contractHash", jt["contractHash"]},
                         { "blockNumber", jt["blockNumber"] },
-                        { "blockTime", jt["blockTime"] },
+                        { "blockTime", 0 },
                         {"time", TimeHelper.GetTimeStamp() }
                     }.ToString();
                 mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
@@ -289,6 +289,8 @@ namespace NEL_FutureDao_BT.task
             var updateStr = new JObject { { "$set", new JObject {
                     { "proposalQueueIndex", proposalQueueIndex},
                     { "proposalState", ProposalState.Voting},
+                    { "blockNumber", jt["blockNumber"] },
+                    { "blockTime", jt["blockTime"] },
                     { "startingPeriod", startingPeriod}
                 } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
@@ -915,7 +917,7 @@ namespace NEL_FutureDao_BT.task
             // Voting -> Noting/PassNot
             var timeLimit = lt - votingPeriod;
             var findStr = new JObject {
-                { "proposalState", ProposalState.Voting }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
+                { "proposalState", ProposalState.Voting }, { "blockTime", new JObject { { "$lt", timeLimit },{ "$gt",0} } } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             var res = filterProjWithEachConfig(queryRes, lt, StateFilterType.VOTE);
             var updateStr = "";
@@ -935,7 +937,7 @@ namespace NEL_FutureDao_BT.task
             // Noting -> PassYes
             timeLimit = lt - (votingPeriod + notingPeriod);
             findStr = new JObject {
-                { "proposalState", ProposalState.Noting }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
+                { "proposalState", ProposalState.Noting }, { "blockTime", new JObject { { "$lt", timeLimit }, { "$gt", 0 } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             res = filterProjWithEachConfig(queryRes, lt, StateFilterType.NOTE);
             updateStr = "";
@@ -954,7 +956,7 @@ namespace NEL_FutureDao_BT.task
             // WaitHandle -> HandleTimeOut
             timeLimit = lt - (votingPeriod + notingPeriod + handlingPeriod);
             findStr = new JObject {
-               { "proposalState", ProposalState.WaitHandle }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
+               { "proposalState", ProposalState.WaitHandle }, { "blockTime", new JObject { { "$lt", timeLimit }, { "$gt", 0 } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             res = filterProjWithEachConfig(queryRes, lt, StateFilterType.WaitHandle);
             updateStr = "";
