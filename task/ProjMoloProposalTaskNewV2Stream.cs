@@ -984,6 +984,7 @@ namespace NEL_FutureDao_BT.task
 
             var item = queryRes[0];
             var startTime = long.Parse(item["startTime"].ToString());
+            if (item["projVersion"].ToString() == "2.0") startTime = long.Parse(jt["blockTime"].ToString());
             var timeLimit = getTimeLimit(item, type);
             return lt > startTime + timeLimit;
         }
