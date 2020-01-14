@@ -38,7 +38,7 @@ namespace NEL_FutureDao_BT.task
                 notingPeriod = 120 * 5;
                 handlingPeriod = 120 * 5;
             }
-            addPrefix();
+            //addPrefix();
             initIndex();
         }
 
