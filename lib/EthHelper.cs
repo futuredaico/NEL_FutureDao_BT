@@ -67,6 +67,80 @@ namespace NEL_FutureDao_BT.lib
 
 
 
+        class MoloVersion{
+            public const string V1 = "1.0";
+            public const string V2 = "2.0";
+        }
+        class ProposalParam
+        {
+            public string method { get; set; }
+            public string methodHash { get; set; }
+            public int resSubLen { get; set; }
+        }
+        class ProposalParamInfo
+        {
+            public static ProposalParam proposalV1 = new ProposalParam
+            {
+                method = "proposalQueue",
+                methodHash = "0x3b214a74",
+                resSubLen = 64 * 13 + 2
+            };
+            public static ProposalParam proposalV2 = new ProposalParam
+            {
+                method = "proposals",
+                methodHash = "0x013cf08b",
+                resSubLen = 64 * 15 + 2
+            };
+        }
+
+        static string getProposalMethodHash(string version, out int resSubLen)
+        {
+            resSubLen = 0;
+
+            var param = ProposalParamInfo.proposalV1;
+            if (version == MoloVersion.V2)
+            {
+                param = ProposalParamInfo.proposalV2;
+            }
+            if (version == MoloVersion.V1)
+            {
+                param = ProposalParamInfo.proposalV2;
+            }
+            resSubLen = param.resSubLen;
+            return param.methodHash;
+        }
+        static string fillIndex(string proposalIndex, string methodHash)
+        {
+            return methodHash + long.Parse(proposalIndex).ToString("x64");
+        }
+        public static string getProposalInfo(string contractHash, string proposalIndex, string version, string type)
+        {
+            var methodHash = getProposalMethodHash(version, out int resSubLen);
+            var fullIndex = fillIndex(proposalIndex, methodHash);
+            var resStr = eth_call_(contractHash, fullIndex, type);
+            var res = ethSplit(resStr, resSubLen);
+            return res;
+        }
+        static string eth_call_(string contractHash, string proposalIndex, string type)
+        {
+            var postJo = new JObject {
+                { "jsonrpc", "2.0"},
+                { "method", "eth_call"},
+                { "params", new JArray{
+                    new JObject{{"to", contractHash},{ "data", proposalIndex } }, "latest" }
+                },
+                { "id", 2 },
+            };
+            var apiUrl = type == "mainnet" ? apiUrl_mainnet : apiUrl_testnet;
+            var res = HttpHelper.HttpPost(apiUrl, Encoding.UTF8.GetBytes(postJo.ToString()));
+            Console.WriteLine(res);
+            //
+            var resJo = JObject.Parse(res);
+            var resStr = resJo["result"].ToString();
+            return resStr;
+        }
+
+
         static Dictionary<string, string> tokenMethodDict = new Dictionary<string, string>
         {
             { "symbol", "0x95d89b41"},

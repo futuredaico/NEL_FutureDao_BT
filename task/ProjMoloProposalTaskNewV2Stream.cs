@@ -38,20 +38,20 @@ namespace NEL_FutureDao_BT.task
                 notingPeriod = 120 * 5;
                 handlingPeriod = 120 * 5;
             }
-            //addPrefix();
+            addPrefix();
             initIndex();
         }
 
         private void addPrefix()
         {
-            var prefix = "zbak33_";
-            notifyCounter = prefix + notifyCounter;
-            notifyCol = prefix + notifyCol;
+            var prefix = "zbak34_";
+            //notifyCounter = prefix + notifyCounter;
+            //notifyCol = prefix + notifyCol;
             moloProjCounter = prefix + moloProjCounter;
             moloProjProposalInfoCol = prefix + moloProjProposalInfoCol;
             moloProjBalanceInfoCol = prefix + moloProjBalanceInfoCol;
             moloProjFundInfoCol = prefix + moloProjFundInfoCol;
-            projInfoCol = prefix + projInfoCol;
+            //projInfoCol = prefix + projInfoCol;
             prefix = "";
             moloProjProposalNameInfoCol = prefix + moloProjProposalNameInfoCol;
             projHashCol = prefix + projHashCol;
@@ -204,7 +204,7 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
             {
-                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
+                getProposalName(jt["contractHash"].ToString(), proposalIndex, projId, out string proposalName, out string proposalDetail);
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
@@ -240,7 +240,7 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
             {
-                getProposalName(jt["contractHash"].ToString(), proposalIndex, out string proposalName, out string proposalDetail);
+                getProposalName(jt["contractHash"].ToString(), proposalIndex, projId, out string proposalName, out string proposalDetail);
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
@@ -807,14 +807,15 @@ namespace NEL_FutureDao_BT.task
             return true;
 
         }
-        private void getProposalNameFromChain(string contractHash, string proposalIndex, out string proposalName, out string proposalDetail)
+        private void getProposalNameFromChain(string contractHash, string proposalIndex, string version, out string proposalName, out string proposalDetail)
         {
             proposalName = "";
             proposalDetail = "";
             var res = "";
             try
             {
-                res = EthHelper.ethCall(contractHash, proposalIndex, netType);
+                //res = EthHelper.ethCall(contractHash, proposalIndex, netType);
+                res = EthHelper.getProposalInfo(contractHash, proposalIndex, version, netType);
             }
             catch { }
             if (res.Length == 0) return;
@@ -831,11 +832,20 @@ namespace NEL_FutureDao_BT.task
             proposalName = res;
             proposalDetail = res;
         }
-        private void getProposalName(string contractHash, string proposalIndex, out string proposalName, out string proposalDetail)
+        private void getProposalName(string contractHash, string proposalIndex, string projId, out string proposalName, out string proposalDetail)
         {
             if (getProposalNameFromDB(contractHash, proposalIndex, out proposalName, out proposalDetail)) return;
-            getProposalNameFromChain(contractHash, proposalIndex, out proposalName, out proposalDetail);
+            var version = getProjVersion(projId);
+            getProposalNameFromChain(contractHash, proposalIndex, version, out proposalName, out proposalDetail);
             putProposalNameToDB(contractHash, proposalIndex, proposalName, proposalDetail);
+        }
+        private string getProjVersion(string projId)
+        {
+            var findStr = new JObject { { "projId", projId} }.ToString();
+            var fieldStr = "{'projVersion':1}";
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, projInfoCol, findStr, fieldStr);
+
+            return queryRes[0]["projVersion"].ToString();
         }
 
 
