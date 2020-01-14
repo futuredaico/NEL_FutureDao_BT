@@ -956,7 +956,7 @@ namespace NEL_FutureDao_BT.task
             findStr = new JObject {
                { "proposalState", ProposalState.WaitHandle }, { "blockTime", new JObject { { "$lt", timeLimit } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
-            //res = filterProjWithEachConfig(queryRes, lt, StateFilterType.WaitHandle);
+            res = filterProjWithEachConfig(queryRes, lt, StateFilterType.WaitHandle);
             updateStr = "";
             if (queryRes != null && queryRes.Count() > 0)
             {
@@ -991,17 +991,17 @@ namespace NEL_FutureDao_BT.task
             {
                 return long.Parse(jt["votePeriod"].ToString());
             }
-            if (type == StateFilterType.VOTE)
+            if (type == StateFilterType.NOTE)
             {
-                return long.Parse(jt["votePeriod"].ToString());
+                return long.Parse(jt["notePeriod"].ToString());
             }
-            if (type == StateFilterType.VOTE)
+            if (type == StateFilterType.CANCEL)
             {
-                return long.Parse(jt["votePeriod"].ToString());
+                return long.Parse(jt["cancelPeriod"].ToString());
             }
             if (type == StateFilterType.WaitHandle)
             {
-                return long.Parse(jt["votePeriod"].ToString());
+                return long.Parse(jt["emergencyExitWaitPeriod"].ToString());
             }
             return 0;
         }
