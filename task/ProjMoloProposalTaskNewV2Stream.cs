@@ -253,9 +253,9 @@ namespace NEL_FutureDao_BT.task
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
                         { "lootRequested", long.Parse(jt["lootRequested"].ToString())},
                         { "tributeOffered", jt["tributeOffered"].ToString()},
-                        { "tributeTokenSymbol", jt["tributeOfferedSymbol"].ToString()},
+                        { "tributeOfferedSymbol", jt["tributeOfferedSymbol"].ToString()},
                         { "paymentRequested", jt["paymentRequested"].ToString()},
-                        { "paymentTokenSymbol", jt["paymentRequestedSymbol"].ToString()},
+                        { "paymentRequestedSymbol", jt["paymentRequestedSymbol"].ToString()},
                         { "startingPeriod", ""},
 
                         { "proposalState", ProposalState.PreVote}, // -->
@@ -668,7 +668,7 @@ namespace NEL_FutureDao_BT.task
                     if (queryRes.Count == 0) return;
 
                     var tributeOffered = jt["tributeOffered"].ToString();
-                    var tributeTokenSymbol = jt["tributeTokenSymbol"].ToString();
+                    var tributeTokenSymbol = jt["tributeOfferedSymbol"].ToString();
                     var tributeToken = jt["tributeToken"].ToString();
                     list.Add(new FundInfo
                     {
@@ -678,7 +678,7 @@ namespace NEL_FutureDao_BT.task
                         sig = 1
                     });
                     var paymentRequested = jt["paymentRequested"].ToString();
-                    var paymentTokenSymbol = jt["paymentTokenSymbol"].ToString();
+                    var paymentTokenSymbol = jt["paymentRequestedSymbol"].ToString();
                     var paymentToken = jt["paymentToken"].ToString();
                     list.Add(new FundInfo
                     {
