@@ -36,7 +36,7 @@ namespace NEL_FutureDao_BT.task
             {
                 votingPeriod = 120 * 5; // tmp
                 notingPeriod = 120 * 5;
-                handlingPeriod = 120 * 5;
+                handlingPeriod = 120 * 2;
             }
             //addPrefix();
             initIndex();
