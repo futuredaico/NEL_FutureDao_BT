@@ -219,7 +219,8 @@ namespace NEL_FutureDao_BT.task
                         { "handleState", ProposalHandleState.Not},
                         { "voteYesCount", 0},
                         { "voteNotCount", 0},
-                        { "proposer", jt["memberAddress"]},
+                        { "proposer", getProposer(jt)},
+                        { "memberAddress", jt["memberAddress"]},
                         { "delegateKey", jt["delegateKey"]},
                         { "applicant", jt["applicant"]},
                         { "transactionHash", jt["transactionHash"]},
@@ -241,6 +242,7 @@ namespace NEL_FutureDao_BT.task
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
             {
                 getProposalName(jt["contractHash"].ToString(), proposalIndex, projId, out string proposalName, out string proposalDetail);
+
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
@@ -262,7 +264,8 @@ namespace NEL_FutureDao_BT.task
                         { "handleState", ProposalHandleState.Not},
                         { "voteYesCount", 0},
                         { "voteNotCount", 0},
-                        { "proposer", jt["memberAddress"]},
+                        { "proposer", getProposer(jt)},
+                        { "memberAddress", jt["memberAddress"]},
                         { "delegateKey", jt["delegateKey"]},
                         { "applicant", jt["applicant"]},
                         { "transactionHash", jt["transactionHash"]},
@@ -273,6 +276,16 @@ namespace NEL_FutureDao_BT.task
                     }.ToString();
                 mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
             }
+        }
+        private string getProposer(JToken jt)
+        {
+            var memberAddress = jt["memberAddress"].ToString().ToLower();
+            var delegateKey = jt["delegateKey"].ToString().ToLower();
+            if (memberAddress == "0x0000000000000000000000000000000000000000")
+            {
+                return delegateKey;
+            }
+            return memberAddress;
         }
         // 3.提案队列信息(v2.0新增)
         private void processProposalQueueInfoV2(JToken jt, string topics)
