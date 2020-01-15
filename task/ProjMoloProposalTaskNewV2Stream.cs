@@ -447,6 +447,7 @@ namespace NEL_FutureDao_BT.task
                     { "proposalState", ProposalState.Aborted},
                     { "handleState", ProposalHandleState.Yes},
                 } } }.ToString();
+            mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
         }
 
 
