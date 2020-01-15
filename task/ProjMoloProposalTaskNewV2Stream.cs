@@ -44,7 +44,7 @@ namespace NEL_FutureDao_BT.task
 
         private void addPrefix()
         {
-            var prefix = "zbak35_";
+            var prefix = "zbak36_";
             //notifyCounter = prefix + notifyCounter;
             //notifyCol = prefix + notifyCol;
             moloProjCounter = prefix + moloProjCounter;
@@ -548,12 +548,14 @@ namespace NEL_FutureDao_BT.task
                 var item = subqueryRes[0];
                 shares = long.Parse(item["sharesRequested"].ToString());
                 loot = long.Parse(item["lootRequested"].ToString());
+                address = item["applicant"].ToString();
             } else
             {
                 shares = long.Parse(jt["sharesToBurn"].ToString());
                 loot = long.Parse(jt["lootToBurn"].ToString());
                 shares *= -1;
                 loot *= -1;
+                address = jt["memberAddress"].ToString();
             }
 
             var now = TimeHelper.GetTimeStamp();
