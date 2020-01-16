@@ -616,13 +616,13 @@ namespace NEL_FutureDao_BT.task
         public const string Noting = "10152";       // 公示中
         public const string PassYes = "10153";      // 已通过
         public const string PassNot = "10154";      // 未通过
-        public const string Aborted = "10155";      // 已终止
+        public const string Aborted = "10155";      // v1投票期被终止
         public const string WaitHandle = "10156";           // 处理期
         public const string HandleTimeOut = "10157";        // 处理超时
     }
     class ProposalHandleState
     {
-        public const string Not = "0"; // 未处理
+        public const string Not = "0"; // 待处理
         public const string Yes = "1"; // 已处理
     }
     class BalanceType

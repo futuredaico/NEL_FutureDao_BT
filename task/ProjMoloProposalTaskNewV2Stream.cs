@@ -205,6 +205,10 @@ namespace NEL_FutureDao_BT.task
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
             {
                 getProposalName(jt["contractHash"].ToString(), proposalIndex, projId, out string proposalName, out string proposalDetail);
+                var st = long.Parse(jt["blockTime"].ToString());
+                var info = getProjStageInfo(projId);
+                var voteExpiredTime = st + info.votePeriod;
+                var noteExpiredTime = st + info.notePeriod;
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
@@ -226,6 +230,8 @@ namespace NEL_FutureDao_BT.task
                         { "applicant", jt["applicant"]},
                         { "transactionHash", jt["transactionHash"]},
                         { "contractHash", jt["contractHash"]},
+                        { "voteExpiredTime", voteExpiredTime},
+                        { "noteExpiredTime", noteExpiredTime},
                         { "blockNumber", jt["blockNumber"] },
                         { "blockTime", jt["blockTime"] },
                         {"time", TimeHelper.GetTimeStamp() }
@@ -290,6 +296,41 @@ namespace NEL_FutureDao_BT.task
             }
             return memberAddress;
         }
+        private class ProjStageInfo
+        {
+            public long votePeriod { get; set; }
+            public long notePeriod { get; set; }
+        }
+        private Dictionary<string, ProjStageInfo> stageDict;
+        private ProjStageInfo getProjStageInfo(string projId)
+        {
+            if(stageDict == null)
+            {
+                stageDict = new Dictionary<string, ProjStageInfo>();
+            }
+            if(!stageDict.ContainsKey(projId))
+            {
+                stageDict.Add(projId, getProjStageInfoFromDB(projId));
+            }
+            var info = stageDict.GetValueOrDefault(projId);
+            return info;
+        }
+        private ProjStageInfo getProjStageInfoFromDB(string projId)
+        {
+            var findStr = new JObject { { "projId", projId } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, projInfoCol, findStr);
+            if (queryRes.Count == 0) throw new Exception("Not find projInfo by projId:" + projId);
+
+            
+            var item = queryRes[0];
+            var info = new ProjStageInfo
+            {
+                votePeriod = long.Parse(item["votePeriod"].ToString()),
+                notePeriod = long.Parse(item["notePeriod"].ToString())
+            };
+            return info;
+        }
+
         // 3.提案队列信息(v2.0新增)
         private void processProposalQueueInfoV2(JToken jt, string topics)
         {
@@ -535,13 +576,14 @@ namespace NEL_FutureDao_BT.task
             }
             //
             var projId = jt["projId"].ToString();
-            var proposalQueueIndex = jt["proposalIndex"].ToString();
+            
 
             var address = "";
             var shares = 0L;
             var loot = 0L;
             if (topics == Topic.ProcessProposal_v2.hash)
             {
+                var proposalQueueIndex = jt["proposalIndex"].ToString();
                 var subfindStr = new JObject { { "projId", projId },{ "proposalQueueIndex", proposalQueueIndex} }.ToString();
                 var subqueryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, subfindStr);
                 if (subqueryRes.Count == 0) return;
