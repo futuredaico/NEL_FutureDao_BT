@@ -780,7 +780,7 @@ namespace NEL_FutureDao_BT.task
                         m = g.Sum(gp =>
                         {
                             if (gp.sig == 1) return decimal.Parse(gp.amount);
-                            return decimal.Parse(gp.amount) * 1;
+                            return decimal.Parse(gp.amount) * -1;
                         })
                     };
                 });
