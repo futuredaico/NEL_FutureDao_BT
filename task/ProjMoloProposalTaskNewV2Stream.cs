@@ -125,7 +125,7 @@ namespace NEL_FutureDao_BT.task
             foreach (var item in res)
             {
                 var topics = item["topics"].ToString();
-
+                
                 processProjCreateTime(item, topics);
                 processDelegateKey(item, topics);
                 processProposalInfo(item, topics);
@@ -704,12 +704,14 @@ namespace NEL_FutureDao_BT.task
                     var tokenTribute = jt["tokenTribute"].ToString();
                     var tokenTributeSymbol = jt["tokenTributeSymbol"].ToString();
                     var tokenTributeHash = jt["tokenTributeHash"].ToString();
+                    var tokenTributeDecimals = long.Parse(jt["tokenTributeDecimals"].ToString());
                     list.Add(new FundInfo
                     {
                         projId = projId,
                         amount = tokenTribute,
                         symbol = tokenTributeSymbol,
                         hash  = tokenTributeHash,
+                        decimals = tokenTributeDecimals,
                         sig = 1
                     });
                 }
@@ -718,11 +720,13 @@ namespace NEL_FutureDao_BT.task
                     var amount = jt["amount"].ToString();
                     var amountSymbol = jt["amountSymbol"].ToString();
                     var amountHash = jt["amountHash"].ToString();
+                    var amountDecimals = long.Parse(jt["amountDecimals"].ToString());
                     list.Add(new FundInfo
                     {
                         amount = amount,
                         symbol = amountSymbol,
                         hash = amountHash,
+                        decimals = amountDecimals,
                         sig = 0
                     });
                 }
@@ -739,21 +743,25 @@ namespace NEL_FutureDao_BT.task
                     var tributeOffered = item["tributeOffered"].ToString();
                     var tributeTokenSymbol = item["tributeOfferedSymbol"].ToString();
                     var tributeToken = item["tributeToken"].ToString();
+                    var tributeOfferedDecimals = long.Parse(item["tributeOfferedDecimals"].ToString());
                     list.Add(new FundInfo
                     {
                         amount = tributeOffered,
                         symbol = tributeTokenSymbol,
                         hash = tributeToken,
+                        decimals = tributeOfferedDecimals,
                         sig = 1
                     });
                     var paymentRequested = item["paymentRequested"].ToString();
                     var paymentTokenSymbol = item["paymentRequestedSymbol"].ToString();
                     var paymentToken = item["paymentToken"].ToString();
+                    var paymentRequestedDecimals = long.Parse(item["paymentRequestedDecimals"].ToString());
                     list.Add(new FundInfo
                     {
                         amount = paymentRequested,
                         symbol = paymentTokenSymbol,
                         hash = paymentToken,
+                        decimals = paymentRequestedDecimals,
                         sig = 0
                     });
                
@@ -762,10 +770,12 @@ namespace NEL_FutureDao_BT.task
                     var amount = jt["amount"].ToString();
                     var amountSymbol = jt["amountSymbol"].ToString();
                     var tokenAddress = jt["tokenAddress"].ToString();
+                    var amountDecimals = long.Parse(jt["amountDecimals"].ToString());
                     list.Add(new FundInfo {
                         amount = amount,
                         symbol = amountSymbol,
                         hash = tokenAddress,
+                        decimals = amountDecimals,
                         sig = 0
                     });
                 }
@@ -777,6 +787,7 @@ namespace NEL_FutureDao_BT.task
                     {
                         h = k,
                         s = g.ToArray()[0].symbol,
+                        d = g.ToArray()[0].decimals,
                         m = g.Sum(gp =>
                         {
                             if (gp.sig == 1) return decimal.Parse(gp.amount);
@@ -795,6 +806,7 @@ namespace NEL_FutureDao_BT.task
                             {"projId", projId },
                             {"fundHash", item.h },
                             {"fundSymbol", item.s },
+                            {"fundDecimals", item.d },
                             {"fundTotal", item.m },
                             {"fundTotalTp", item.m },
                         }.ToString();
@@ -836,6 +848,7 @@ namespace NEL_FutureDao_BT.task
             public string projId { get; set; }
             public string amount { get; set; }
             public string symbol { get; set; }
+            public long decimals { get; set; }
             public string hash { get; set; }
             public int sig { get; set; }
         }
