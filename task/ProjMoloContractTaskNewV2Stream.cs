@@ -95,7 +95,8 @@ namespace NEL_FutureDao_BT.task
             res = res.Where(p => p != null).OrderBy(p => long.Parse(p["counter"].ToString())).ToArray();
             foreach (var item in res)
             {
-                findStr = new JObject { { "transactionHash", item["transactionHash"] }, { "event", item["event"] } }.ToString();
+                //findStr = new JObject { { "transactionHash", item["transactionHash"] }, { "event", item["event"] } }.ToString();
+                findStr = new JObject { { "counter", item["counter"] }}.ToString();
                 if (mh.GetDataCount(lConn.connStr, lConn.connDB, notifyCol, findStr) == 0)
                 {
                     mh.PutData(lConn.connStr, lConn.connDB, notifyCol, item.ToString());
