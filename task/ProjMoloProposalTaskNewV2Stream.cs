@@ -786,7 +786,6 @@ namespace NEL_FutureDao_BT.task
                 });
                 foreach(var item in res)
                 {
-                    if (item.m == decimal.Zero) continue;
                     var findStr = new JObject { { "projId", projId },{ "fundHash", item.h} }.ToString();
                     var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjFundInfoCol, findStr);
                     if(queryRes.Count == 0)
