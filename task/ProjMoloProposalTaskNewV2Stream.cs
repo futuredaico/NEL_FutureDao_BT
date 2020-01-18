@@ -208,7 +208,7 @@ namespace NEL_FutureDao_BT.task
                 var st = long.Parse(jt["blockTime"].ToString());
                 var info = getProjStageInfo(projId);
                 var voteExpiredTime = st + info.votePeriod;
-                var noteExpiredTime = st + info.notePeriod;
+                var noteExpiredTime = voteExpiredTime + info.notePeriod;
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
@@ -303,6 +303,7 @@ namespace NEL_FutureDao_BT.task
         {
             public long votePeriod { get; set; }
             public long notePeriod { get; set; }
+            public long emergencyExitWait { get; set; }
         }
         private Dictionary<string, ProjStageInfo> stageDict;
         private ProjStageInfo getProjStageInfo(string projId)
@@ -326,10 +327,16 @@ namespace NEL_FutureDao_BT.task
 
             
             var item = queryRes[0];
+            var emergencyExitWait = 0L;
+            if (item["emergencyExitWait"] != null)
+            {
+                emergencyExitWait = long.Parse(item["emergencyExitWait"].ToString());
+            }
             var info = new ProjStageInfo
             {
                 votePeriod = long.Parse(item["votePeriod"].ToString()),
-                notePeriod = long.Parse(item["notePeriod"].ToString())
+                notePeriod = long.Parse(item["notePeriod"].ToString()),
+                emergencyExitWait = emergencyExitWait
             };
             return info;
         }
@@ -346,9 +353,17 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
 
+            var st = long.Parse(jt["blockTime"].ToString());
+            var info = getProjStageInfo(projId);
+            var voteExpiredTime = st + info.votePeriod;
+            var noteExpiredTime = voteExpiredTime + info.notePeriod;
+            var emergencyExitWaitTime = noteExpiredTime + info.emergencyExitWait;
             var updateStr = new JObject { { "$set", new JObject {
                     { "proposalQueueIndex", proposalQueueIndex},
                     { "proposalState", ProposalState.Voting},
+                    { "voteExpiredTime", voteExpiredTime },
+                    { "noteExpiredTime", noteExpiredTime },
+                    { "emergencyExitWaitTime", emergencyExitWaitTime },
                     { "blockNumber", jt["blockNumber"] },
                     { "blockTime", jt["blockTime"] },
                     { "startingPeriod", startingPeriod}
@@ -996,6 +1011,63 @@ namespace NEL_FutureDao_BT.task
 
         // 状态变动
         private void handleProposalState()
+        {
+            var lh = getLh(out long lc, out long lt);
+            // Voting -> Noting/PassNot
+            var findStr = new JObject {
+                { "proposalState", ProposalState.Voting }, { "voteExpiredTime", new JObject { { "$lte", lt },{ "$gt",0} } } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            var res = queryRes;
+            var updateStr = "";
+            if (res != null && res.Count() > 0)
+            {
+                foreach (var item in res)
+                {
+                    var yesCount = long.Parse(item["voteYesCount"].ToString());
+                    var notCount = long.Parse(item["voteNotCount"].ToString());
+                    var state = yesCount > notCount ? ProposalState.Noting : ProposalState.PassNot;
+                    findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
+                    updateStr = new JObject { { "$set", new JObject { { "proposalState", state } } } }.ToString();
+                    mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+                }
+            }
+
+            // Noting -> PassYes
+            findStr = new JObject {
+                { "proposalState", ProposalState.Noting }, { "noteExpiredTime", new JObject { { "$lte", lt }, { "$gt", 0 } } } }.ToString();
+            queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            res = queryRes;
+            updateStr = "";
+            if (res != null && res.Count() > 0)
+            {
+                foreach (var item in res)
+                {
+                    findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
+                    var state = ProposalState.PassYes;
+                    if (item["lootRequested"] != null) state = ProposalState.WaitHandle;
+                    updateStr = new JObject { { "$set", new JObject { { "proposalState", state } } } }.ToString();
+                    mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+                }
+            }
+
+            // WaitHandle -> HandleTimeOut
+            findStr = new JObject {
+               { "proposalState", ProposalState.WaitHandle }, { "emergencyExitWaitTime", new JObject { { "$lt", lt }, { "$gt", 0 } } } }.ToString();
+            queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            updateStr = "";
+            if (queryRes != null && queryRes.Count() > 0)
+            {
+                foreach (var item in queryRes)
+                {
+                    findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
+                    var state = ProposalState.PassYes;
+                    if (item["lootRequested"] != null) state = ProposalState.HandleTimeOut;
+                    updateStr = new JObject { { "$set", new JObject { { "proposalState", state } } } }.ToString();
+                    mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+                }
+            }
+        }
+        private void handleProposalStateOld()
         {
             var lh = getLh(out long lc, out long lt);
             // Voting -> Noting/PassNot
