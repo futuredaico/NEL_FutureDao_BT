@@ -432,7 +432,7 @@ namespace NEL_FutureDao_BT.task
         }
         private long GetL(out long lastCounter, out long time, string key = "logs")
         {
-            lastCounter = 0L;
+            lastCounter = -1L;
             time = 0L;
             var findStr = new JObject { { "counter", key } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCounter, findStr);
