@@ -514,6 +514,7 @@ namespace NEL_FutureDao_BT.task
         // 8.个人股份余额
         private void processPersonShare(JToken jt, string topics)
         {
+            if (hasExistSummonerBalance(jt, topics)) return;
             //v2.0
             processPersonShareV2(jt, topics);
             //v1.0
@@ -673,7 +674,21 @@ namespace NEL_FutureDao_BT.task
                 } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
         }
+        private bool hasExistSummonerBalance(JToken jt, string topics)
+        {
+            if (topics != Topic.SummonComplete.hash) return false;
 
+            var projId = jt["projId"].ToString();
+            var address = jt["summoner"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", address } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+            if (queryRes.Count == 0) return false;
+
+            var item = queryRes[0];
+            var oldShares = long.Parse(item["sharesBalance"].ToString());
+            if (oldShares == 0) return false;
+            return true;
+        }
 
         // 9.项目股份总额、持有人数、资金总额
         private void processProjShareAndTeamAndFund(JToken jt, string topics)
