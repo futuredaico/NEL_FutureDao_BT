@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace NEL_FutureDao_BT.task
 {
@@ -910,6 +911,24 @@ namespace NEL_FutureDao_BT.task
         }
         private void getProposalNameFromChain(string contractHash, string proposalIndex, string version, out string proposalName, out string proposalDetail)
         {
+            int countLimit = 3;
+            int sleepInterval = 3000;
+            int count = 0;
+            while(true)
+            {
+                getProposalNameFromChain_(contractHash, proposalIndex, version, out proposalName, out proposalDetail);
+                if (proposalName != "" || proposalDetail != "") break;
+
+                Console.WriteLine(DateTime.Now.ToString("u")  + " " + count);
+                ++count;
+                if (count >= countLimit) break;
+
+                var sleepTime = sleepInterval * count;
+                Thread.Sleep((int)sleepTime);
+            }
+        }
+        private void getProposalNameFromChain_(string contractHash, string proposalIndex, string version, out string proposalName, out string proposalDetail)
+        {
             proposalName = "";
             proposalDetail = "";
             var res = "";
@@ -1010,7 +1029,7 @@ namespace NEL_FutureDao_BT.task
         private bool tempNotClearAllFlag = true;
 
         // 状态变动
-        private void handleProposalState()
+        private void handleProposalStateNew()
         {
             var lh = getLh(out long lc, out long lt);
             // Voting -> Noting/PassNot
@@ -1067,7 +1086,7 @@ namespace NEL_FutureDao_BT.task
                 }
             }
         }
-        private void handleProposalStateOld()
+        private void handleProposalState()
         {
             var lh = getLh(out long lc, out long lt);
             // Voting -> Noting/PassNot
