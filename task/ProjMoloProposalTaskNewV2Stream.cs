@@ -99,8 +99,8 @@ namespace NEL_FutureDao_BT.task
 
         public override void process()
         {
-            Sleep(2000);
-            processNew();
+            //Sleep(2000);
+            //processNew();
             handleProposalState();
         }
 
@@ -1134,9 +1134,9 @@ namespace NEL_FutureDao_BT.task
             {
                 foreach (var item in queryRes)
                 {
-                    getProposalStateTransTo(item, state);
+                    var tState = getProposalStateTransTo(item, state);
                     findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
-                    updateStr = new JObject { { "$set", new JObject { { "proposalState", state } } } }.ToString();
+                    updateStr = new JObject { { "$set", new JObject { { "proposalState", tState } } } }.ToString();
                     mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
                 }
             }
