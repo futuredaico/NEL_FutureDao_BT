@@ -300,7 +300,7 @@ namespace NEL_FutureDao_BT.task
             // [0,120) index=0
             // [120,240) index=1
             // 临界点120发提案, 则120~240均为upComing, 240为投票开始时间
-            var index = pStartTime / periodDuration + 1;
+            var index = (pStartTime-startTime) / periodDuration + 1;
             var vStartTime = startTime + periodDuration * index;
             return vStartTime;
         }
