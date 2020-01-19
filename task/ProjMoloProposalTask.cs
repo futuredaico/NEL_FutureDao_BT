@@ -609,20 +609,36 @@ namespace NEL_FutureDao_BT.task
             return rr;
         }
     }
-    class ProposalState
+    class ProposalStateOld
     {
-        public const string PreVote = "10150";       // 预发布
-        public const string Voting = "10151";       // 投票中
-        public const string Noting = "10152";       // 公示中
-        public const string PassYes = "10153";      // 已通过
-        public const string PassNot = "10154";      // 未通过
-        public const string Aborted = "10155";      // v1投票期被终止
+        public const string PreVote = "10150";          // 预发布
+        public const string Voting = "10151";           // 投票中
+        public const string Noting = "10152";           // 公示中
+        public const string PassYes = "10153";          // 已通过
+        public const string PassNot = "10154";          // 未通过
+        public const string Aborted = "10155";          // v1投票期被终止
         public const string WaitHandle = "10156";           // 处理期
         public const string HandleTimeOut = "10157";        // 处理超时
     }
+    class ProposalState
+    {
+        //
+        public const string PreVote = "10150";          // v2预发布
+        public const string Cancel = "10151";           // v2取消提案
+        //
+        public const string UpComing = "10152";         // 即将开始期间
+        public const string Voting = "10153";           // 投票中
+        public const string Noting = "10154";           // 公示中
+        public const string Handling = "10155";         // 处理中
+        //
+        public const string PassYes = "10156";          // 已通过
+        public const string PassNot = "10157";          // 未通过
+        public const string Aborted = "10158";          // v1投票期被终止
+        public const string HandleTimeOut = "10159";    // 处理超时
+    }
     class ProposalHandleState
     {
-        public const string Not = "0"; // 待处理
+        public const string Not = "0"; // 未处理
         public const string Yes = "1"; // 已处理
     }
     class BalanceType
