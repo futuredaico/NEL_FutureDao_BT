@@ -35,9 +35,9 @@ namespace NEL_FutureDao_BT.task
             //
             if (netType == "testnet")
             {
-                votingPeriod = 120 * 5; // tmp
-                notingPeriod = 120 * 5;
-                handlingPeriod = 120 * 2;
+                votingPeriod = 120 * 1; // tmp
+                notingPeriod = 120 * 1;
+                handlingPeriod = 120 * 1;
             }
             //addPrefix();
             initIndex();
@@ -99,8 +99,8 @@ namespace NEL_FutureDao_BT.task
 
         public override void process()
         {
-            Sleep(2000);
-            processNew();
+            //Sleep(2000);
+            //processNew();
             handleProposalState();
         }
 
