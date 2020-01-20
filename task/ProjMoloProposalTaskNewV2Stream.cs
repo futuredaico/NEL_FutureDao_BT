@@ -99,8 +99,8 @@ namespace NEL_FutureDao_BT.task
 
         public override void process()
         {
-            //Sleep(2000);
-            //processNew();
+            Sleep(2000);
+            processNew();
             handleProposalState();
         }
 
