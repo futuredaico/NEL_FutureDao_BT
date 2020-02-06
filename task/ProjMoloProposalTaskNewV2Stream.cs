@@ -357,6 +357,7 @@ namespace NEL_FutureDao_BT.task
                 notePeriod = long.Parse(item["notePeriod"].ToString()),
                 emergencyExitWait = emergencyExitWait
             };
+            info.emergencyExitWait *= info.periodDuration;
             return info;
         }
 
