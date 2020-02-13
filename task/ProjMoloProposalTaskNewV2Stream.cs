@@ -567,12 +567,14 @@ namespace NEL_FutureDao_BT.task
             {
                 return;
             }
+            var isCreator = false;
             var address = "";
             var shares = 0L;
             if (topics == Topic.SummonComplete.hash)
             {
                 address = jt["summoner"].ToString();
                 shares = long.Parse(jt["shares"].ToString());
+                isCreator = true;
             } else if(topics == Topic.ProcessProposal.hash)
             {
                 address = jt["applicant"].ToString();
@@ -594,7 +596,7 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
             if (queryRes.Count == 0)
             {
-                var newdata = new JObject {
+                var newdataObj = new JObject {
                         { "projId", projId},
                         { "proposalQueueIndex", ""},
                         { "type", BalanceType.Balance},
@@ -607,7 +609,9 @@ namespace NEL_FutureDao_BT.task
                         { "newDelegateKey",""},
                         { "time", now},
                         { "lastUpdateTime", now}
-                    }.ToString();
+                    };
+                if (isCreator) newdataObj["creator"] = "2";
+                var newdata = newdataObj.ToString();
                 mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
                 return;
             }
