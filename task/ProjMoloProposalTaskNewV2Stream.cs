@@ -517,6 +517,7 @@ namespace NEL_FutureDao_BT.task
             var updateStr = new JObject { { "$set", updateJo } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
         }
+
         // 7.提案终止
         private void processAbort(JToken jt, string topics)
         {
@@ -637,8 +638,8 @@ namespace NEL_FutureDao_BT.task
             }
             //
             var projId = jt["projId"].ToString();
-            
 
+            var isPickoutProcessProposal = false;
             var address = "";
             var shares = 0L;
             var loot = 0L;
@@ -653,6 +654,7 @@ namespace NEL_FutureDao_BT.task
                 shares = long.Parse(item["sharesRequested"].ToString());
                 loot = long.Parse(item["lootRequested"].ToString());
                 address = item["applicant"].ToString();
+                isPickoutProcessProposal = isPickout(item);
             } else
             {
                 shares = long.Parse(jt["sharesToBurn"].ToString());
@@ -705,6 +707,14 @@ namespace NEL_FutureDao_BT.task
             lootBalance += loot - lootBalanceTp;
             lootBalanceTp += loot;
             var balance = sharesBalance + lootBalance;
+            if(isPickoutProcessProposal)
+            {
+                var tt = sharesBalance;
+                sharesBalance -= tt;
+                sharesBalanceTp -= tt;
+                lootBalance += tt;
+                lootBalanceTp += tt;
+            }
             var updateStr = new JObject { {"$set", new JObject {
                     { "balance", balance},
                     { "sharesBalance", sharesBalance},
@@ -729,6 +739,36 @@ namespace NEL_FutureDao_BT.task
             var oldShares = long.Parse(item["sharesBalance"].ToString());
             if (oldShares == 0) return false;
             return true;
+        }
+        private bool isPickout(JToken jt)
+        {
+            var type = getProposalType(jt);
+            return type == ProposalType.PickOutMember;
+        }
+        private string getProposalType(JToken jt)
+        {
+            var zeroAddr = "0x0000000000000000000000000000000000000000";
+            var tributeToken = jt["tributeToken"].ToString();
+            var paymentToken = jt["paymentToken"].ToString();
+            if (tributeToken == zeroAddr && paymentToken == zeroAddr)
+            {
+                return ProposalType.PickOutMember;
+            }
+            if (tributeToken != zeroAddr && paymentToken == zeroAddr)
+            {
+                return ProposalType.AddSupportToken;
+            }
+            if (tributeToken != zeroAddr && paymentToken != zeroAddr)
+            {
+                return ProposalType.ApplyShare;
+            }
+            return "notKwon";
+        }
+        class ProposalType
+        {
+            public const string ApplyShare = "0";           // 申请股份
+            public const string AddSupportToken = "1";      // 添加代币
+            public const string PickOutMember = "2";        // 剔除成员
         }
 
         // 9.项目股份总额、持有人数、资金总额
