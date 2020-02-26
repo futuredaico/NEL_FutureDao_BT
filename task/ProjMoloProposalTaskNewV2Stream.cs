@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace NEL_FutureDao_BT.task
 {
@@ -34,9 +35,9 @@ namespace NEL_FutureDao_BT.task
             //
             if (netType == "testnet")
             {
-                votingPeriod = 120 * 5; // tmp
-                notingPeriod = 120 * 5;
-                handlingPeriod = 120 * 2;
+                votingPeriod = 120 * 1; // tmp
+                notingPeriod = 120 * 1;
+                handlingPeriod = 120 * 1;
             }
             //addPrefix();
             initIndex();
@@ -205,15 +206,17 @@ namespace NEL_FutureDao_BT.task
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0)
             {
                 getProposalName(jt["contractHash"].ToString(), proposalIndex, projId, out string proposalName, out string proposalDetail);
-                var st = long.Parse(jt["blockTime"].ToString());
+                var pst = long.Parse(jt["blockTime"].ToString());
                 var info = getProjStageInfo(projId);
-                var voteExpiredTime = st + info.votePeriod;
-                var noteExpiredTime = st + info.notePeriod;
+                var voteStartTime = getVoteStartTime(info.startTime, info.periodDuration, pst);
+                var voteExpiredTime = voteStartTime + info.votePeriod;
+                var noteExpiredTime = voteExpiredTime + info.notePeriod;
                 var newdata = new JObject {
                         { "projId", projId},
                         { "proposalIndex", proposalIndex},
                         { "proposalQueueIndex", proposalIndex},
                         { "proposalId", projId+proposalIndex},
+                        { "proposalVersion", "1.0"},
                         { "proposalName", proposalName},
                         { "proposalDetail", proposalDetail},
                         { "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
@@ -221,7 +224,7 @@ namespace NEL_FutureDao_BT.task
                         { "tokenTributeSymbol", jt["tokenTributeSymbol"].ToString()},
                         { "tokenTributeHash", jt["tokenTributeHash"].ToString()},
                         { "tokenTributeDecimals", jt["tokenTributeDecimals"].ToString()},
-                        { "proposalState", ProposalState.Voting},
+                        { "proposalState", ProposalState.UpComing},
                         { "handleState", ProposalHandleState.Not},
                         { "voteYesCount", 0},
                         { "voteNotCount", 0},
@@ -231,6 +234,7 @@ namespace NEL_FutureDao_BT.task
                         { "applicant", jt["applicant"]},
                         { "transactionHash", jt["transactionHash"]},
                         { "contractHash", jt["contractHash"]},
+                        { "voteStartTime", voteStartTime},
                         { "voteExpiredTime", voteExpiredTime},
                         { "noteExpiredTime", noteExpiredTime},
                         { "blockNumber", jt["blockNumber"] },
@@ -256,6 +260,7 @@ namespace NEL_FutureDao_BT.task
                         { "proposalIndex", proposalIndex},
                         { "proposalQueueIndex", ""},
                         { "proposalId", projId+proposalIndex},
+                        { "proposalVersion", "2.0"},
                         { "proposalName", proposalName},
                         { "proposalDetail", proposalDetail},
                         //{ "sharesRequested", long.Parse(jt["sharesRequested"].ToString())},
@@ -289,6 +294,16 @@ namespace NEL_FutureDao_BT.task
                 mh.PutData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, newdata);
             }
         }
+        private long getVoteStartTime(long startTime, long periodDuration, long pStartTime)
+        {
+            // 0 --> 120 --> 240
+            // [0,120) index=0
+            // [120,240) index=1
+            // 临界点120发提案, 则120~240均为upComing, 240为投票开始时间
+            var index = (pStartTime-startTime) / periodDuration + 1;
+            var vStartTime = startTime + periodDuration * index;
+            return vStartTime;
+        }
         private string getProposer(JToken jt)
         {
             var memberAddress = jt["memberAddress"].ToString().ToLower();
@@ -301,8 +316,11 @@ namespace NEL_FutureDao_BT.task
         }
         private class ProjStageInfo
         {
+            public long startTime { get; set; }
+            public long periodDuration { get; set; }
             public long votePeriod { get; set; }
             public long notePeriod { get; set; }
+            public long emergencyExitWait { get; set; }
         }
         private Dictionary<string, ProjStageInfo> stageDict;
         private ProjStageInfo getProjStageInfo(string projId)
@@ -326,11 +344,20 @@ namespace NEL_FutureDao_BT.task
 
             
             var item = queryRes[0];
+            var emergencyExitWait = 0L;
+            if (item["emergencyExitWait"] != null)
+            {
+                emergencyExitWait = long.Parse(item["emergencyExitWait"].ToString());
+            }
             var info = new ProjStageInfo
             {
+                startTime = long.Parse(item["startTime"].ToString()),
+                periodDuration = long.Parse(item["periodDuration"].ToString()),
                 votePeriod = long.Parse(item["votePeriod"].ToString()),
-                notePeriod = long.Parse(item["notePeriod"].ToString())
+                notePeriod = long.Parse(item["notePeriod"].ToString()),
+                emergencyExitWait = emergencyExitWait
             };
+            info.emergencyExitWait *= info.periodDuration;
             return info;
         }
 
@@ -346,9 +373,19 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject { { "projId", projId }, { "proposalIndex", proposalIndex } }.ToString();
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
 
+            var pst = long.Parse(jt["blockTime"].ToString());
+            var info = getProjStageInfo(projId);
+            var voteStartTime = getVoteStartTime(info.startTime, info.periodDuration, pst);
+            var voteExpiredTime = voteStartTime + info.votePeriod;
+            var noteExpiredTime = voteExpiredTime + info.notePeriod;
+            var emergencyExitWaitTime = noteExpiredTime + info.emergencyExitWait;
             var updateStr = new JObject { { "$set", new JObject {
                     { "proposalQueueIndex", proposalQueueIndex},
-                    { "proposalState", ProposalState.Voting},
+                    { "proposalState", ProposalState.UpComing},
+                    { "voteStartTime", voteStartTime },
+                    { "voteExpiredTime", voteExpiredTime },
+                    { "noteExpiredTime", noteExpiredTime },
+                    { "emergencyExitWaitTime", emergencyExitWaitTime },
                     { "blockNumber", jt["blockNumber"] },
                     { "blockTime", jt["blockTime"] },
                     { "startingPeriod", startingPeriod}
@@ -420,14 +457,31 @@ namespace NEL_FutureDao_BT.task
             var projId = jt["projId"].ToString();
             var proposalQueueIndex = jt["proposalIndex"].ToString();
             var applicant = jt["applicant"].ToString();
-            var didPass = getProposalState(jt["didPass"].ToString());
-            if (didPass == ProposalState.PassYes)
+            var didPass = jt["didPass"].ToString();
+            var voteRes = getProposalState(didPass);
+            if (voteRes == ProposalState.PassYes)
             {
-                // 受益人收到股份, 自动退回权限
+                // 受益人收到股份, 自动退回权限(受益人直接从event中获取)
                 resetDelegateKey(applicant);
             }
+
             var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", proposalQueueIndex } }.ToString();
-            var updateStr = new JObject { { "$set", new JObject { { "proposalState", getProposalState(didPass) }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            if (queryRes.Count == 0) return;
+
+            var item = queryRes[0];
+            var handleState = ProposalHandleState.Yes;
+            var handleTime = long.Parse(jt["blockTime"].ToString());
+            var updateJo = new JObject {
+                { "handleState",  handleState},
+                { "handleTime", handleTime }
+            };
+            var state = item["proposalState"].ToString();
+            if (state != ProposalState.Aborted)
+            {
+                updateJo.Add("proposalState", voteRes);
+            }
+            var updateStr = new JObject { { "$set", updateJo } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
         }
         private void processProposalResultV2(JToken jt, string topics)
@@ -441,25 +495,29 @@ namespace NEL_FutureDao_BT.task
             if (queryRes.Count == 0) return;
 
             var item = queryRes[0];
-            var state = item["proposalState"].ToString();
-            if (state == ProposalState.HandleTimeOut)
-            {
-                var subUpdateStr = new JObject { { "$set", new JObject { { "handleState", ProposalHandleState.Yes } } } }.ToString();
-                mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, subUpdateStr, findStr);
-                return;
-            }
-
             var didPass = jt["didPass"].ToString();
             var voteRes = getProposalState(didPass);
-            //
             if (voteRes == ProposalState.PassYes)
             {
-                // 受益人收到股份, 自动退回权限
+                // 受益人收到股份, 自动退回权限(受益人直接从提案信息中获取)
                 resetDelegateKey(item["applicant"].ToString());
             }
-            var updateStr = new JObject { { "$set", new JObject { { "proposalState", voteRes }, { "handleState", ProposalHandleState.Yes } } } }.ToString();
+
+            var handleState = ProposalHandleState.Yes;
+            var handleTime = long.Parse(jt["blockTime"].ToString());
+            var updateJo = new JObject {
+                { "handleState",  handleState},
+                { "handleTime", handleTime }
+            };
+            var state = item["proposalState"].ToString();
+            if (state != ProposalState.HandleTimeOut)
+            {
+                updateJo.Add("proposalState", voteRes);
+            }
+            var updateStr = new JObject { { "$set", updateJo } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
         }
+
         // 7.提案终止
         private void processAbort(JToken jt, string topics)
         {
@@ -473,7 +531,7 @@ namespace NEL_FutureDao_BT.task
             var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", propoalQueueIndex } }.ToString();
             var updateStr = new JObject { { "$set", new JObject {
                 { "proposalState", ProposalState.Aborted },
-                { "handleState", ProposalHandleState.Yes }
+                { "handleState", ProposalHandleState.Not }
             } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
 
@@ -488,7 +546,7 @@ namespace NEL_FutureDao_BT.task
             if (mh.GetDataCount(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr) == 0) return;
 
             var updateStr = new JObject { { "$set", new JObject {
-                    { "proposalState", ProposalState.Aborted},
+                    { "proposalState", ProposalState.Cancel},
                     { "handleState", ProposalHandleState.Yes},
                 } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
@@ -498,6 +556,7 @@ namespace NEL_FutureDao_BT.task
         // 8.个人股份余额
         private void processPersonShare(JToken jt, string topics)
         {
+            if (hasExistSummonerBalance(jt, topics)) return;
             //v2.0
             processPersonShareV2(jt, topics);
             //v1.0
@@ -508,12 +567,14 @@ namespace NEL_FutureDao_BT.task
             {
                 return;
             }
+            var isCreator = false;
             var address = "";
             var shares = 0L;
             if (topics == Topic.SummonComplete.hash)
             {
                 address = jt["summoner"].ToString();
                 shares = long.Parse(jt["shares"].ToString());
+                isCreator = true;
             } else if(topics == Topic.ProcessProposal.hash)
             {
                 address = jt["applicant"].ToString();
@@ -535,7 +596,7 @@ namespace NEL_FutureDao_BT.task
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
             if (queryRes.Count == 0)
             {
-                var newdata = new JObject {
+                var newdataObj = new JObject {
                         { "projId", projId},
                         { "proposalQueueIndex", ""},
                         { "type", BalanceType.Balance},
@@ -548,7 +609,9 @@ namespace NEL_FutureDao_BT.task
                         { "newDelegateKey",""},
                         { "time", now},
                         { "lastUpdateTime", now}
-                    }.ToString();
+                    };
+                if (isCreator) newdataObj["creator"] = "2";
+                var newdata = newdataObj.ToString();
                 mh.PutData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, newdata);
                 return;
             }
@@ -579,8 +642,8 @@ namespace NEL_FutureDao_BT.task
             }
             //
             var projId = jt["projId"].ToString();
-            
 
+            var isPickoutProcessProposal = false;
             var address = "";
             var shares = 0L;
             var loot = 0L;
@@ -595,6 +658,7 @@ namespace NEL_FutureDao_BT.task
                 shares = long.Parse(item["sharesRequested"].ToString());
                 loot = long.Parse(item["lootRequested"].ToString());
                 address = item["applicant"].ToString();
+                isPickoutProcessProposal = isPickout(item);
             } else
             {
                 shares = long.Parse(jt["sharesToBurn"].ToString());
@@ -647,6 +711,14 @@ namespace NEL_FutureDao_BT.task
             lootBalance += loot - lootBalanceTp;
             lootBalanceTp += loot;
             var balance = sharesBalance + lootBalance;
+            if(isPickoutProcessProposal)
+            {
+                var tt = sharesBalance;
+                sharesBalance -= tt;
+                sharesBalanceTp -= tt;
+                lootBalance += tt;
+                lootBalanceTp += tt;
+            }
             var updateStr = new JObject { {"$set", new JObject {
                     { "balance", balance},
                     { "sharesBalance", sharesBalance},
@@ -657,7 +729,51 @@ namespace NEL_FutureDao_BT.task
                 } } }.ToString();
             mh.UpdateData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, updateStr, findStr);
         }
+        private bool hasExistSummonerBalance(JToken jt, string topics)
+        {
+            if (topics != Topic.SummonComplete.hash) return false;
 
+            var projId = jt["projId"].ToString();
+            var address = jt["summoner"].ToString();
+            var findStr = new JObject { { "projId", projId }, { "proposalQueueIndex", "" }, { "address", address } }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjBalanceInfoCol, findStr);
+            if (queryRes.Count == 0) return false;
+
+            var item = queryRes[0];
+            var oldShares = long.Parse(item["sharesBalance"].ToString());
+            if (oldShares == 0) return false;
+            return true;
+        }
+        private bool isPickout(JToken jt)
+        {
+            var type = getProposalType(jt);
+            return type == ProposalType.PickOutMember;
+        }
+        private string getProposalType(JToken jt)
+        {
+            var zeroAddr = "0x0000000000000000000000000000000000000000";
+            var tributeToken = jt["tributeToken"].ToString();
+            var paymentToken = jt["paymentToken"].ToString();
+            if (tributeToken == zeroAddr && paymentToken == zeroAddr)
+            {
+                return ProposalType.PickOutMember;
+            }
+            if (tributeToken != zeroAddr && paymentToken == zeroAddr)
+            {
+                return ProposalType.AddSupportToken;
+            }
+            if (tributeToken != zeroAddr && paymentToken != zeroAddr)
+            {
+                return ProposalType.ApplyShare;
+            }
+            return "notKwon";
+        }
+        class ProposalType
+        {
+            public const string ApplyShare = "0";           // 申请股份
+            public const string AddSupportToken = "1";      // 添加代币
+            public const string PickOutMember = "2";        // 剔除成员
+        }
 
         // 9.项目股份总额、持有人数、资金总额
         private void processProjShareAndTeamAndFund(JToken jt, string topics)
@@ -895,6 +1011,24 @@ namespace NEL_FutureDao_BT.task
         }
         private void getProposalNameFromChain(string contractHash, string proposalIndex, string version, out string proposalName, out string proposalDetail)
         {
+            int countLimit = 3;
+            int sleepInterval = 3000;
+            int count = 0;
+            while(true)
+            {
+                getProposalNameFromChain_(contractHash, proposalIndex, version, out proposalName, out proposalDetail);
+                if (proposalName != "" || proposalDetail != "") break;
+
+                Console.WriteLine(DateTime.Now.ToString("u")  + " " + count);
+                ++count;
+                if (count >= countLimit) break;
+
+                var sleepTime = sleepInterval * count;
+                Thread.Sleep((int)sleepTime);
+            }
+        }
+        private void getProposalNameFromChain_(string contractHash, string proposalIndex, string version, out string proposalName, out string proposalDetail)
+        {
             proposalName = "";
             proposalDetail = "";
             var res = "";
@@ -997,6 +1131,76 @@ namespace NEL_FutureDao_BT.task
         // 状态变动
         private void handleProposalState()
         {
+            var lt = TimeHelper.GetTimeStamp();
+
+            // UpComint -> Voting
+            var state = ProposalState.UpComing;
+            var findStr = new JObject {
+                { "proposalState", state },
+                { "voteStartTime", new JObject { { "$lte", lt },{ "$gt",0} } }
+            }.ToString();
+            var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            handleProposalState(queryRes, state);
+
+            // Voting -> Noting
+            state = ProposalState.Voting;
+            findStr = new JObject {
+                { "proposalState", state },
+                { "voteExpiredTime", new JObject { { "$lte", lt },{ "$gt",0} } }
+            }.ToString();
+            queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            handleProposalState(queryRes, state);
+
+            // Noting -> Handling/PassYes
+            state = ProposalState.Noting;
+            findStr = new JObject {
+                { "proposalState", state },
+                { "noteExpiredTime", new JObject { { "$lte", lt }, { "$gt", 0 } } }
+            }.ToString();
+            queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            handleProposalState(queryRes, state);
+
+            getLh(out long lc, out long llt);
+            lt = llt;
+            // Handling -> HandleTimeOut
+            state = ProposalState.Handling;
+            findStr = new JObject {
+               { "proposalState", state },
+               { "emergencyExitWaitTime", new JObject { { "$lt", lt }, { "$gt", 0 } } }
+            }.ToString();
+            queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
+            handleProposalState(queryRes, state);
+        }
+        private void handleProposalState(JArray queryRes, string state)
+        {
+            var findStr = "";
+            var updateStr = "";
+            if (queryRes != null && queryRes.Count() > 0)
+            {
+                foreach (var item in queryRes)
+                {
+                    var tState = getProposalStateTransTo(item, state);
+                    findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
+                    updateStr = new JObject { { "$set", new JObject { { "proposalState", tState } } } }.ToString();
+                    mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
+                }
+            }
+        }
+        private string getProposalStateTransTo(JToken jt, string state)
+        {
+            if (state == ProposalState.UpComing) return ProposalState.Voting;
+            if (state == ProposalState.Voting) return ProposalState.Noting;
+            if (state == ProposalState.Handling) return ProposalState.HandleTimeOut;
+            // Noting --> PassYes/PassNot/Handling
+            var yesCount = long.Parse(jt["voteYesCount"].ToString());
+            var notCount = long.Parse(jt["voteNotCount"].ToString());
+            var rstate = yesCount > notCount ? ProposalState.PassYes : ProposalState.PassNot;
+            if (jt["lootRequested"] != null) rstate = ProposalState.Handling;
+            return rstate;
+        }
+
+        private void handleProposalStateOld()
+        {
             var lh = getLh(out long lc, out long lt);
             // Voting -> Noting/PassNot
             var timeLimit = lt - votingPeriod;
@@ -1031,7 +1235,7 @@ namespace NEL_FutureDao_BT.task
                 {
                     findStr = new JObject { { "projId", item["projId"] }, { "proposalIndex", item["proposalIndex"] } }.ToString();
                     var state = ProposalState.PassYes;
-                    if (item["lootRequested"] != null) state = ProposalState.WaitHandle;
+                    if (item["lootRequested"] != null) state = ProposalState.Handling;
                     updateStr = new JObject { { "$set", new JObject { { "proposalState", state } } } }.ToString();
                     mh.UpdateData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, updateStr, findStr);
                 }
@@ -1040,7 +1244,7 @@ namespace NEL_FutureDao_BT.task
             // WaitHandle -> HandleTimeOut
             timeLimit = lt - (votingPeriod + notingPeriod + handlingPeriod);
             findStr = new JObject {
-               { "proposalState", ProposalState.WaitHandle }, { "blockTime", new JObject { { "$lt", timeLimit }, { "$gt", 0 } } } }.ToString();
+               { "proposalState", ProposalState.Handling }, { "blockTime", new JObject { { "$lt", timeLimit }, { "$gt", 0 } } } }.ToString();
             queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjProposalInfoCol, findStr);
             res = filterProjWithEachConfig(queryRes, lt, StateFilterType.WaitHandle);
             updateStr = "";
@@ -1126,7 +1330,7 @@ namespace NEL_FutureDao_BT.task
         }
         private long getLh(out long lastCounter, out long lt, string key = "logs")
         {
-            lastCounter = 0;
+            lastCounter = -1L;
             lt = 0;
             var findStr = new JObject { { "counter", key } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, moloProjCounter, findStr);
@@ -1138,7 +1342,7 @@ namespace NEL_FutureDao_BT.task
         }
         private long getRh(out long lastCounter, out long rt, string key = "logs")
         {
-            lastCounter = 0;
+            lastCounter = -1L;
             rt = 0;
             var findStr = new JObject { { "counter", key } }.ToString();
             var queryRes = mh.GetData(lConn.connStr, lConn.connDB, notifyCounter, findStr);

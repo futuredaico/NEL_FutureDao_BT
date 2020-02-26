@@ -34,7 +34,8 @@ namespace NEL_FutureDao_BT
             }
             foreach (var func in list)
             {
-                Task.Run(func.Start);
+                //Task.Run(func.Start);
+                Task.Run(() => func.Start());
             }
         }
 

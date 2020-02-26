@@ -104,7 +104,7 @@ namespace NEL_FutureDao_BT.lib
             }
             if (version == MoloVersion.V1)
             {
-                param = ProposalParamInfo.proposalV2;
+                param = ProposalParamInfo.proposalV1;
             }
             resSubLen = param.resSubLen;
             return param.methodHash;
