@@ -146,9 +146,11 @@ namespace NEL_FutureDao_BT.task
                 if (topics == Topic.SummonComplete.hash
                     || topics == Topic.SubmitVote.hash
                     || topics == Topic.ProcessProposal.hash
+                    || topics == Topic.Withdrawal.hash
                     || topics == Topic.Ragequit.hash
                     || topics == Topic.SubmitProposal_v2.hash
                     || topics == Topic.ProcessProposal_v2.hash
+                    || topics == Topic.Withdrawal_v2.hash
                     || topics == Topic.Ragequit_v2.hash
                     )
                 {
