@@ -8,41 +8,43 @@ using System.Linq;
 
 namespace NEL_FutureDao_BT.task
 {
-    class ProjCountTask : AbsTask
+    class ProjFutureCountTask : AbsTask
     {
         private MongoDBHelper mh = new MongoDBHelper();
         private DbConnInfo daoConn;
         private string daoCounterCol = "daocounters";
         private string projInfoCol = "daoprojinfos";
         private string projStarInfoCol = "daoprojstarinfos";
-        private string projUpdateInfoCol = "daoprojupdateinfos";
-        private string projUpdateStarInfoCol = "daoprojupdatestarinfos";
         private string projDiscussInfoCol = "daoprojdiscussinfos";
         private string projDiscussZanInfoCol = "daoprojdiscusszaninfos";
+        private string projUpdateInfoCol = "daoprojupdateinfos";
+        private string projUpdateStarInfoCol = "daoprojupdatestarinfos";
         private string projUpdateDiscussInfoCol = "daoprojupdatediscussinfos";
         private string projUpdateDiscussZanInfoCol = "daoprojupdatediscusszaninfos";
-        private int batchSize;
-        private int batchInterval;
-        public ProjCountTask(string name) : base(name) { }
+        private int batchSize = 100;
+        private int batchInterval = 2000;
+        public ProjFutureCountTask(string name) : base(name) { }
         public override void initConfig(JObject config)
         {
-            JToken cfg = config["TaskList"].Where(p => p["taskName"].ToString() == name() && p["taskNet"].ToString() == networkType()).ToArray()[0]["taskInfo"];
-            batchSize = int.Parse(cfg["batchSize"].ToString());
-            batchInterval = int.Parse(cfg["batchInterval"].ToString());
+            //JToken cfg = config["TaskList"].Where(p => p["taskName"].ToString() == name() && p["taskNet"].ToString() == networkType()).ToArray()[0]["taskInfo"];
+            //batchSize = int.Parse(cfg["batchSize"].ToString());
+            //batchInterval = int.Parse(cfg["batchInterval"].ToString());
             daoConn = Config.daoDbConnInfo;
         }
 
         public override void process()
         {
             Log(batchInterval);
-            // 关注/支持
+            // 项目的关注/评论/评论点赞
             processCount(handleProjStarCount);
-            // 
-            processCount(handleProjUpdateCount);
             processCount(handleProjDiscussCount);
+            processCount(handleProjDiscussZanCount);
+            //
+            processCount(handleProjUpdateCount);
+
+            // 更新的点赞/评论/评论点赞
             processCount(handleUpdateDiscussCount);
             processCount(handleProjUpdateZanCount);
-            processCount(handleProjDiscussZanCount);
             processCount(handleUpdateDiscussZanCount);
 
         }
@@ -57,9 +59,9 @@ namespace NEL_FutureDao_BT.task
                 Console.WriteLine(ex);
             }
         }
+        //1.项目关注
         private void handleProjStarCount()
         {
-            // supprotCount + starCount + discussCount + updateCount
             string key = "projStarCount";
             long lt = GetLTime(key);
             //
@@ -86,30 +88,9 @@ namespace NEL_FutureDao_BT.task
                 queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, projStarInfoCol, list);
                 if (queryRes.Count > 0)
                 {
-                    updateDict = queryRes.ToDictionary(k => k["_id"].ToString(), v => new JObject { { "starCount", long.Parse(v["sum"].ToString()) } });
-                }
-
-                findJo.Remove("starState");
-                findJo.Add("supportState", StarState.SupportYes);
-                list = new List<string>();
-                list.Add(new JObject { { "$match", findJo } }.ToString());
-                list.Add(new JObject { { "$group", new JObject { { "_id", "$projId" }, { "sum", new JObject { { "$sum", 1 } } } } } }.ToString());
-                queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, projStarInfoCol, list);
-                if (queryRes.Count > 0)
-                {
-                    foreach (var item in queryRes)
-                    {
-                        var skey = item["_id"].ToString();
-                        var sval = long.Parse(item["sum"].ToString());
-                        if (updateDict.ContainsKey(skey))
-                        {
-                            updateDict.GetValueOrDefault(skey)["supportCount"] = sval;
-                        }
-                        else
-                        {
-                            updateDict.Add(skey, new JObject { { "supportCount", sval } });
-                        }
-                    }
+                    updateDict = queryRes.ToDictionary(
+                        k => k["_id"].ToString(), 
+                        v => new JObject { { "starCount", long.Parse(v["sum"].ToString()) } });
                 }
                 if (updateDict.Count > 0)
                 {
@@ -128,49 +109,27 @@ namespace NEL_FutureDao_BT.task
             UpdateLTime(key, rt);
 
         }
-        private void handleProjUpdateCount()
-        {
-            //
-            string key = "projUpdateCount";
-            long lt = GetLTime(key);
-
-            string rColl = projUpdateInfoCol;
-            if (!GetMaxTmAndProjIds(rColl, lt, out long rt, out string[] ids)) return;
-            int size = 100;
-            int cnt = ids.Length;
-            for (int skip = 0; skip < cnt; skip += size)
-            {
-                var idArr = ids.Skip(skip).Take(size).ToArray();
-                var findJo = idArr.toFilter("projId");
-                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt} });
-                //
-                GetCountAndUpdateByProjId(findJo, rColl, projInfoCol, "updateCount");
-            }
-
-            //
-            UpdateLTime(key, rt);
-        }
-
-        private bool GetMaxTmAndProjIds(string coll, long lt, out long rt, out string[] ids, bool hasPreId = false)
+        //2.项目讨论
+        private bool GetMaxTmAndProjIds(string coll, long lt, out long rt, out string[] ids, bool hasPreId = false, string IdField="projId")
         {
             rt = 0;
             ids = null;
             var findJo = new JObject { { "lastUpdateTime", new JObject { { "$gt", lt } } } };
             if (hasPreId) findJo.Add("preDiscussId", "");
-            string findStr = findJo.ToString();
-            string fieldStr = "{'projId':1,'lastUpdateTime':1}";
+            var findStr = findJo.ToString();
+            var fieldStr = "{'"+ IdField + "':1,'lastUpdateTime':1}";
             var queryRes = mh.GetData(daoConn.connStr, daoConn.connDB, coll, findStr, fieldStr);
             if (queryRes.Count == 0) return false;
             rt = queryRes.Max(p => long.Parse(p["lastUpdateTime"].ToString()));
-            ids = queryRes.Select(p => p["projId"].ToString()).Distinct().ToArray();
+            ids = queryRes.Select(p => p[IdField].ToString()).Distinct().ToArray();
             return true;
         }
-        private void GetCountAndUpdateByProjId(JObject findJo, string rColl, string lColl, string rKey)
+        private void GetCountAndUpdateByProjId(JObject findJo, string rColl, string lColl, string rKey, string rKeyField="projId")
         {
             var updateDict = new Dictionary<string, JObject>();
             var list = new List<string>();
             list.Add(new JObject { { "$match", findJo } }.ToString());
-            list.Add(new JObject { { "$group", new JObject { { "_id", "$projId" }, { "sum", new JObject { { "$sum", 1 } } } } } }.ToString());
+            list.Add(new JObject { { "$group", new JObject { { "_id", "$"+ rKeyField }, { "sum", new JObject { { "$sum", 1 } } } } } }.ToString());
             var queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, rColl, list);
             if (queryRes.Count > 0)
             {
@@ -179,7 +138,7 @@ namespace NEL_FutureDao_BT.task
             if (updateDict.Count > 0)
             {
                 var updateJa = updateDict.ToDictionary(
-                    k => new JObject { { "projId", k.Key } }.ToString(),
+                    k => new JObject { { rKeyField, k.Key } }.ToString(),
                     v => new JObject { { "$set", v.Value } }.ToString()
                     );
                 foreach (var item in updateJa)
@@ -208,86 +167,7 @@ namespace NEL_FutureDao_BT.task
             //
             UpdateLTime(key, rt);
         }
-
-
-        private bool GetMaxTmAndUpdateIds(string coll, long lt, out long rt, out string[] ids, bool hasPreId = false)
-        {
-            rt = 0;
-            ids = null;
-            var findJo = new JObject { { "lastUpdateTime", new JObject { { "$gt", lt } } } };
-            if (hasPreId) findJo.Add("preDiscussId", "");
-            string findStr = findJo.ToString();
-            string fieldStr = "{'updateId':1,'lastUpdateTime':1}";
-            var queryRes = mh.GetData(daoConn.connStr, daoConn.connDB, coll, findStr, fieldStr);
-            if (queryRes.Count == 0) return false;
-            rt = queryRes.Max(p => long.Parse(p["lastUpdateTime"].ToString()));
-            ids = queryRes.Select(p => p["updateId"].ToString()).Distinct().ToArray();
-            return true;
-        }
-        private void GetCountAndUpdateByUpdateId(JObject findJo, string rColl, string lColl, string rKey)
-        {
-            var updateDict = new Dictionary<string, JObject>();
-            var list = new List<string>();
-            list.Add(new JObject { { "$match", findJo } }.ToString());
-            list.Add(new JObject { { "$group", new JObject { { "_id", "$updateId" }, { "sum", new JObject { { "$sum", 1 } } } } } }.ToString());
-            var queryRes = mh.Aggregate(daoConn.connStr, daoConn.connDB, rColl, list);
-            if (queryRes.Count > 0)
-            {
-                updateDict = queryRes.ToDictionary(k => k["_id"].ToString(), v => new JObject { { rKey, long.Parse(v["sum"].ToString()) } });
-            }
-            if (updateDict.Count > 0)
-            {
-                var updateJa = updateDict.ToDictionary(
-                    k => new JObject { { "updateId", k.Key } }.ToString(),
-                    v => new JObject { { "$set", v.Value } }.ToString()
-                    );
-                foreach (var item in updateJa)
-                {
-                    mh.UpdateData(daoConn.connStr, daoConn.connDB, lColl, item.Value, item.Key);
-                }
-            }
-        }
-
-        private void handleUpdateDiscussCount()
-        {
-            string key = "projUpdateDiscussCount";
-            long lt = GetLTime(key);
-
-            string rColl = projUpdateDiscussInfoCol;
-            if (!GetMaxTmAndUpdateIds(rColl, lt, out long rt, out string[] ids, true)) return;
-            int size = batchSize;
-            int cnt = ids.Length;
-            for (int skip = 0; skip < cnt; skip += size)
-            {
-                var idArr = ids.Skip(skip).Take(size).ToArray();
-                var findJo = idArr.toFilter("updateId");
-                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
-                GetCountAndUpdateByUpdateId(findJo, rColl, projUpdateInfoCol, "discussCount");
-            }
-            //
-            UpdateLTime(key, rt);
-        }
-        private void handleProjUpdateZanCount()
-        {
-            string key = "projUpdateZanCount";
-            long lt = GetLTime(key);
-
-            string rColl = projUpdateStarInfoCol;
-            if (!GetMaxTmAndUpdateIds(rColl, lt, out long rt, out string[] ids)) return;
-            int size = batchSize;
-            int cnt = ids.Length;
-            for (int skip = 0; skip < cnt; skip += size)
-            {
-                var idArr = ids.Skip(skip).Take(size).ToArray();
-                var findJo = idArr.toFilter("updateId");
-                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
-                GetCountAndUpdateByUpdateId(findJo, rColl, projUpdateInfoCol, "zanCount");
-            }
-            //
-            UpdateLTime(key, rt);
-        }
-
-
+        //3.项目讨论点赞
         private bool GetMaxTmAndDiscussIds(string coll, long lt, out long rt, out string[] ids)
         {
             rt = 0;
@@ -341,7 +221,6 @@ namespace NEL_FutureDao_BT.task
             //
             UpdateLTime(key, rt);
         }
-
         private void handleProjDiscussZanCount()
         {
             string key = "projDiscussZanCount";
@@ -349,6 +228,72 @@ namespace NEL_FutureDao_BT.task
             string lColl = projDiscussInfoCol;
             handleDiscussZanCount(key, rColl, lColl);
         }
+
+        //
+        private void handleProjUpdateCount()
+        {
+            //
+            string key = "projUpdateCount";
+            long lt = GetLTime(key);
+
+            string rColl = projUpdateInfoCol;
+            if (!GetMaxTmAndProjIds(rColl, lt, out long rt, out string[] ids)) return;
+            int size = 100;
+            int cnt = ids.Length;
+            for (int skip = 0; skip < cnt; skip += size)
+            {
+                var idArr = ids.Skip(skip).Take(size).ToArray();
+                var findJo = idArr.toFilter("projId");
+                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt} });
+                //
+                GetCountAndUpdateByProjId(findJo, rColl, projInfoCol, "updateCount");
+            }
+
+            //
+            UpdateLTime(key, rt);
+        }
+
+        //4.项目更新点赞
+        private void handleProjUpdateZanCount()
+        {
+            string key = "projUpdateZanCount";
+            long lt = GetLTime(key);
+
+            string rColl = projUpdateStarInfoCol;
+            if (!GetMaxTmAndProjIds(rColl, lt, out long rt, out string[] ids, false, "updateId")) return;
+            int size = batchSize;
+            int cnt = ids.Length;
+            for (int skip = 0; skip < cnt; skip += size)
+            {
+                var idArr = ids.Skip(skip).Take(size).ToArray();
+                var findJo = idArr.toFilter("updateId");
+                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
+                GetCountAndUpdateByProjId(findJo, rColl, projUpdateInfoCol, "zanCount", "updateId");
+            }
+            //
+            UpdateLTime(key, rt);
+        }
+        //5.项目更新讨论
+        private void handleUpdateDiscussCount()
+        {
+            string key = "projUpdateDiscussCount";
+            long lt = GetLTime(key);
+
+            string rColl = projUpdateDiscussInfoCol;
+            if (!GetMaxTmAndProjIds(rColl, lt, out long rt, out string[] ids, true,"updateId")) return;
+            int size = batchSize;
+            int cnt = ids.Length;
+            for (int skip = 0; skip < cnt; skip += size)
+            {
+                var idArr = ids.Skip(skip).Take(size).ToArray();
+                var findJo = idArr.toFilter("updateId");
+                findJo.Add("lastUpdateTime", new JObject { { "$lte", rt } });
+                GetCountAndUpdateByProjId(findJo, rColl, projUpdateInfoCol, "discussCount", "updateId");
+            }
+            //
+            UpdateLTime(key, rt);
+        }
+        //6.项目更新讨论点赞
         private void handleUpdateDiscussZanCount()
         {
             string key = "projUpdateDiscussZanCount";
