@@ -13,7 +13,7 @@ namespace NEL_FutureDao_BT.task
         private MongoDBHelper mh = new MongoDBHelper();
         private DbConnInfo daoConn;
         private string daoCounterCol = "daocounters";
-        private string projInfoCol = "daoprojinfos";
+        private string projInfoCol = "moloprojinfos";
         private string projStarInfoCol = "daoprojstarinfos";
         private string projDiscussInfoCol = "daoprojdiscussinfos";
         private string projDiscussZanInfoCol = "daoprojdiscusszaninfos";
