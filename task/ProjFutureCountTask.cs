@@ -91,6 +91,12 @@ namespace NEL_FutureDao_BT.task
                     updateDict = queryRes.ToDictionary(
                         k => k["_id"].ToString(), 
                         v => new JObject { { "starCount", long.Parse(v["sum"].ToString()) } });
+                } else
+                {
+                    updateDict = idArr.ToDictionary(
+                        k => k,
+                        v => new JObject { { "starCount", long.Parse("0")} }
+                        );
                 }
                 if (updateDict.Count > 0)
                 {
